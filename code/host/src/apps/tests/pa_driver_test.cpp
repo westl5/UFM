@@ -6,9 +6,9 @@
 
 #include "pa_driver/packets.hpp"
 #include "arduino/packet_reader.hpp"
-#include "src/include/serial/serial_port.hpp"
-#include "util/logging.hpp"
-#include "util/command_line.hpp"
+#include "include/serial/serial_port.hpp"
+#include "include/util/logging.hpp"
+#include "include/util/command_line.hpp"
 #include <cstdio>
 #include <chrono>
 #include <map>

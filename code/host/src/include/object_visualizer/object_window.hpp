@@ -1,7 +1,7 @@
 #ifndef INCLUDED_OBJECT_WINDOW_HPP
 #define INCLUDED_OBJECT_WINDOW_HPP
 
-#include "apps/object_visualizer/window.hpp"
+#include "include/object_visualizer/window.hpp"
 #include "util/config.hpp"
 #include <memory>
 

@@ -1,4 +1,4 @@
-#include "apps/object_visualizer/window.hpp"
+#include "include/object_visualizer/window.hpp"
 #include <GL/gl.h>
 #include <stdexcept>
 

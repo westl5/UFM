@@ -1,4 +1,4 @@
-#include "apps/object_visualizer/render.hpp"
+#include "include/object_visualizer/render.hpp"
 #include <opencv2/opencv.hpp>
 #include <GL/gl.h>
 #include <GL/glu.h>
