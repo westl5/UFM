@@ -13,8 +13,8 @@
  *   Michael A. King.
  */
 
-#include "apps/object_visualizer/perspective_window.hpp"
-#include "apps/object_visualizer/render.hpp"
+#include "include/object_visualizer/perspective_window.hpp"
+#include "include/object_visualizer/render.hpp"
 #include "pixart/camera_parameters.hpp"
 #ifdef _WIN32
     // Windows specific includes

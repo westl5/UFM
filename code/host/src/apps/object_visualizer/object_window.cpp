@@ -1,4 +1,4 @@
-#include "apps/object_visualizer/object_window.hpp"
+#include "include/object_visualizer/object_window.hpp"
 
 class object_window_impl: public window_3d
 {

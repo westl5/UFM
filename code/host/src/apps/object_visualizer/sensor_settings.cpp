@@ -1,7 +1,7 @@
 #include "pa_driver/packets.hpp"
 #include "arduino/packet_reader.hpp"
-#include "pixart/settings.hpp"
-#include "serial/i_serial_device.hpp"
+#include "include/pixart/settings.hpp"
+#include "include/serial/i_serial_device.hpp"
 #include <cstdio>
 #include <map>
 

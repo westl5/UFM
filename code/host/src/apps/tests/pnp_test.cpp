@@ -8,8 +8,8 @@
  * Order of points matters: object points and image points must correspond.
  */
 
-#include "util/math.hpp"
-#include "pixart/camera_parameters.hpp"
+#include "include/util/math.hpp"
+#include "include/pixart/camera_parameters.hpp"
 #include <opencv2/opencv.hpp>
 
 static cv::Mat transform_matrix(cv::Point3f euler, cv::Point3f xlat)

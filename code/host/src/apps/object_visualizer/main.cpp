@@ -4,17 +4,17 @@
  * Show objects as detected by sensor.
  */
 
-#include "util/logging.hpp"
-#include "util/command_line.hpp"
-#include "serial/serial_port.hpp"
-#include "serial/serial_replay_device.hpp"
-#include "arduino/packet_reader.hpp"
+#include "include/util/logging.hpp"
+#include "include/util/command_line.hpp"
+#include "include/serial/serial_port.hpp"
+#include "include/serial/serial_replay_device.hpp"
+#include "include/arduino/packet_reader.hpp"
 #include "pa_driver/packets.hpp"
 #include "pa_driver/pixart_object.hpp"
-#include "pixart/camera_parameters.hpp"
-#include "apps/object_visualizer/sensor_settings.hpp"
-#include <object_visualizer/object_window.hpp>
-#include <object_visualizer/perspective_window.hpp>
+#include "include/pixart/camera_parameters.hpp"
+#include "include/object_visualizer/sensor_settings.hpp"
+#include "include/object_visualizer/object_window.hpp"
+#include <include/object_visualizer/perspective_window.hpp>
 #include <object_visualizer/print_objects.hpp>
 #include <SDL2/SDL.h>
 #include <cstdio>

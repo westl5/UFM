@@ -2,7 +2,7 @@
 #define INCLUDED_WINDOW_HPP
 
 #include "pa_driver/pixart_object.hpp"
-#include "pixart/settings.hpp"
+#include "include/pixart/settings.hpp"
 #include <SDL2/SDL.h>
 #include <cstdint>
 #include <array>
