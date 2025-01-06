@@ -19,9 +19,9 @@ CONSIDER_DISTORTION = True
 PATTERN_TYPE = 'six'  # Options: 'four', 'six', or 'nine'
 
 BASE_DISTANCE = 200  # Distance between base LEDs in mm for 6-point pattern
-CURSOR_LIMIT_PERCENT = 40  # Cursor movement limit as percentage of pattern size
+CURSOR_LIMIT_PERCENT = 40  # Cursor movement limit as percentage of pattern size (To be changed in the future, once occlusion and/or missing points are considered)
 
-# Define camera parameters (PixArt PAJ7025R3)
+# Define camera parameters (from PixArt PAJ7025R3 datasheet)
 f_eff = 0.378        # focal length (mm)
 pixel_size = 11e-3   # mm
 resolution = 98      # pixels (square sensor)
@@ -35,17 +35,17 @@ camera_matrix = np.array([
     [0, 0, 1]
 ], dtype=np.float32)
 
+#distortion defined as -30% in datasheet. OpenCV uses different model, so this part maty not be accurate
 if CONSIDER_DISTORTION:
-    # -30% distortion
+    # -30% distortion, approximate by setting k1=-0.3 
     dist_coeffs = np.array([[-0.3], [0], [0], [0]], dtype=np.float32)  # k1=-0.3, k2=0, p1=0, p2=0
 else:
     dist_coeffs = np.zeros((4,1))
 
-# Define calibration pattern dimensions
-square_size = 50  # mm (50x50mm square)
+# Define grid for plotting in 3d
+
 grid_rows = 3
 grid_cols = 3
-spacing = square_size / (grid_rows - 1)  # Space between points
 test_num = -70
 # Define dictionary of camera positions and their targets
 CAMERA_POSITIONS = {
@@ -238,7 +238,7 @@ print("\nPoint coordinates:")
 for i, point in enumerate(points_3d):
     print(f"Point {i+1}: {point}")
 
-# Calculate rotation and translation for true camera pose
+# Get forward vector for true camera 
 forward = target_point - camera_pos
 forward = forward / np.linalg.norm(forward)
 
@@ -380,7 +380,7 @@ print(f"Direction dot product: {np.dot(true_forward, recovered_forward):.3f}")
 print(f"Direction angle: {np.arccos(np.clip(np.dot(true_forward, recovered_forward), -1.0, 1.0))*180/np.pi:.1f} degrees")
 
 # Plot results
-fig = plt.figure(figsize=(15, 12))  # Made figure taller for third plot
+fig = plt.figure(figsize=(15, 12))  # accomodates for 3 plots
 gs = fig.add_gridspec(2, 2, height_ratios=[2, 1])  # 2 rows, 2 columns grid
 
 # 3D subplot (top left)
@@ -428,7 +428,7 @@ ax_3d.legend()
 ax_3d.set_box_aspect([1,1,1])
 ax_3d.view_init(elev=30, azim=45)
 
-# Draw grid lines
+# Draw lines between points
 for row in range(grid_rows):
     row_points = points_3d[row*grid_cols:(row+1)*grid_cols]
     ax_3d.plot(row_points[:, 0], row_points[:, 1], row_points[:, 2], 'r--', alpha=0.5)
@@ -503,7 +503,7 @@ for i, idx in enumerate(display_order):
                color='blue', fontsize=10)
 
 # Update point coordinate printing
-print("\nPoint coordinates (ordered by projection):")
+print("\nPoint coordinates:")
 for i, idx in enumerate(display_order):
     print(f"Point {i+1}: {points_3d[idx]}")
 
@@ -519,7 +519,7 @@ screen_aspect = screen_width / screen_height
 def camera_to_screen(camera_pos, screen_width, screen_height, pattern_spacing):
     """
     Convert camera position to screen coordinates
-    Maps ±pattern_spacing to screen edges
+    Maps pattern_spacing to screen edges
     Y direction is flipped (positive Y moves cursor up)
     """
     # Define mapping range using percentage of pattern spacing
