@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 PLOT_VIEW_DIR = True # Set to True to show viewing directions and looking points
 CONSIDER_DISTORTION = True
 
-PATTERN_TYPE = 'six'  # Options: 'four', 'six', or 'nine'
+PATTERN_TYPE = 'six'  # Options: 'square' or 'six'
 
 BASE_DISTANCE = 200  # Distance between base LEDs in mm for 6-point pattern
 CURSOR_LIMIT_PERCENT = 40  # Cursor movement limit as percentage of pattern size (To be changed in the future, once occlusion and/or missing points are considered)
@@ -50,7 +50,7 @@ test_num = -70
 # Define dictionary of camera positions and their targets
 CAMERA_POSITIONS = {
     'front': (np.array([0, 0, 200]), np.array([0, 0, 0])),      # Looking straight down
-    'side': (np.array([-100, 0, 50]), np.array([0, 0, 0])),     # Side view from high angle
+    'side': (np.array([-100, 0, 200]), np.array([0, 0, 0])),     # Side view from high angle
     'angle': (np.array([-50, -50, 75]), np.array([0, 0, 0])),   # 45-degree angle view
     'high': (np.array([-25, -25, 150]), np.array([0, 0, 0])),   # High overhead view
     'close': (np.array([-10, -10, 50]), np.array([0, 0, 0])),   # Close overhead view
@@ -59,7 +59,7 @@ CAMERA_POSITIONS = {
 }
 
 # Select camera position (change this string to test different positions)
-position_type = 'front'  # Options: 'front', 'side', 'angle', 'high', 'close', 'far', 'offset'
+position_type = 'side'  # Options: 'front', 'side', 'angle', 'high', 'close', 'far', 'offset'
 
 # Get camera position and target
 camera_pos, target_point = CAMERA_POSITIONS[position_type]
@@ -68,9 +68,9 @@ print(f"\nUsing camera position: {position_type}")
 print(f"Camera position: {camera_pos}")
 print(f"Target point: {target_point}")
 
-def create_four_point_pattern():
+def create_square_pattern():
     """
-    Creates a coplanar pattern with 4 points
+    Creates a square pattern with 4 points
     100mm separation between points
     """
     spacing = 100  # Distance between points (100mm)
@@ -86,7 +86,7 @@ def create_four_point_pattern():
     dimensions = {
         'spacing': spacing,
         'num_points': 4,
-        'type': 'four'
+        'type': 'square'
     }
     
     return points, dimensions
@@ -125,47 +125,6 @@ def create_six_point_pattern():
     
     return points, dimensions
 
-def create_nine_point_pattern():
-    """
-    Creates a pattern with 9 IR LED points:
-    - Base square (4 points) with 100mm sides
-    - Center point in base square
-    - Four points slightly elevated at strategic positions
-    All dimensions in mm
-    """
-    spacing = 100  # Base spacing (100mm)
-    
-    # Base layer (z=0)
-    base_points = [
-        [-spacing/2, -spacing/2, 0],    # Bottom left
-        [spacing/2, -spacing/2, 0],     # Bottom right
-        [spacing/2, spacing/2, 0],      # Top right
-        [-spacing/2, spacing/2, 0],     # Top left
-        [0, 0, 0],                      # Center point
-    ]
-    
-    # Upper points at strategic positions
-    # Using golden ratio for optimal point distribution
-    golden = 0.618
-    h1, h2 = 15, 25  # Two different heights for asymmetry
-    
-    upper_points = [
-        [-spacing*golden/2, -spacing*golden/2, h1],  # Lower left
-        [spacing*golden/2, -spacing*golden/2, h2],   # Lower right
-        [0, spacing*golden/2, h1],                   # Upper center
-        [-spacing*golden/3, spacing*golden/3, h2],   # Upper left
-    ]
-    
-    points = np.array(base_points + upper_points, dtype=np.float32)
-    
-    dimensions = {
-        'spacing': spacing,
-        'heights': [h1, h2],
-        'num_points': 9,
-        'type': 'nine'
-    }
-    
-    return points, dimensions
 
 def plot_pattern_3d(ax, points, pattern_type):
     """Plot the calibration pattern based on its type"""
@@ -173,36 +132,13 @@ def plot_pattern_3d(ax, points, pattern_type):
     ax.scatter(points[:, 0], points[:, 1], points[:, 2], 
               c='r', marker='o', s=100, label='Pattern Points')
     
-    if pattern_type == 'four':
+    if pattern_type == 'square':
         # Draw square
         edges = np.array([0, 1, 2, 3, 0])
         ax.plot(points[edges, 0], points[edges, 1], points[edges, 2], 
                'r--', alpha=0.7)
-    elif pattern_type == 'nine':
-        # Draw base square
-        base_edges = np.array([0, 1, 2, 3, 0])
-        ax.plot(points[base_edges, 0], points[base_edges, 1], points[base_edges, 2], 
-               'r--', alpha=0.7)
-        
-        # Draw lines from center to corners
-        center = points[4]
-        for i in range(4):
-            ax.plot([center[0], points[i][0]], 
-                   [center[1], points[i][1]], 
-                   [center[2], points[i][2]], 
-                   'r:', alpha=0.5)
-        
-        # Draw upper points connections
-        for i in range(5, 9):
-            # Connect to nearest base point
-            dists = np.linalg.norm(points[:5] - points[i], axis=1)
-            nearest = np.argmin(dists)
-            ax.plot([points[nearest][0], points[i][0]], 
-                   [points[nearest][1], points[i][1]], 
-                   [points[nearest][2], points[i][2]], 
-                   'r-', alpha=0.5)
-    else:  # 'six' pattern
-        # (existing triangle pattern plotting code)
+    elif pattern_type == 'six':  # 'six' pattern
+        # Draw base triangle
         base_edges = np.array([0, 1, 2, 0])
         ax.plot(points[base_edges, 0], points[base_edges, 1], points[base_edges, 2], 
                'r--', alpha=0.7)
@@ -216,12 +152,11 @@ def plot_pattern_3d(ax, points, pattern_type):
                    [points[i][1], points[i+3][1]], 
                    [points[i][2], points[i+3][2]], 
                    'r-', alpha=0.7)
-
-# Create calibration pattern based on selected type
-if PATTERN_TYPE == 'four':
-    points_3d, pattern_dims = create_four_point_pattern()
-elif PATTERN_TYPE == 'nine':
-    points_3d, pattern_dims = create_nine_point_pattern()
+    else:
+        raise ValueError(f"Invalid pattern type: {pattern_type}")
+    
+if PATTERN_TYPE == 'square':
+    points_3d, pattern_dims = create_square_pattern()
 elif PATTERN_TYPE == 'six':
     points_3d, pattern_dims = create_six_point_pattern()
 else:
