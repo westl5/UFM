@@ -584,13 +584,3 @@ ax_screen.grid(True)
 
 plt.tight_layout()
 plt.show()
-
-# Print results with additional information
-print("\nResults:")
-print(f"Square size: {square_size}x{square_size} mm")
-print(f"Square center: {target_point}")
-print(f"True camera position: {camera_pos}")
-print(f"Recovered position: {recovered_pos.flatten()}")
-print(f"Position error: {np.linalg.norm(camera_pos - recovered_pos.flatten()):.3f} mm")
-print(f"Distance to square center: {np.linalg.norm(camera_pos - target_point):.3f} mm")
-
