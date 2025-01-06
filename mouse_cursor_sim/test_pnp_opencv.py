@@ -109,9 +109,9 @@ def create_six_point_pattern():
     
     # Upper points at practical heights
     upper_points = [
-        [-spacing/4, -spacing/4, 5],     # Left post (5 mm)
-        [spacing/4, -spacing/4, 10],     # Right post (10 mm)
-        [0, spacing/4, 15],               # Center post (15 mm)
+        [-spacing/4, -spacing/4, 10],     # Left height (5mm)
+        [spacing/4, -spacing/4, 20],     # Right height (10mm)
+        [0, spacing/4, 30],               # Center height (15mm)
     ]
     
     points = np.array(base_points + upper_points, dtype=np.float32)
@@ -227,7 +227,7 @@ def ensure_positive_z(R, t):
         R = R_flip @ R
         t = R_flip @ t
     return R, t
-
+'''
 # P3P (up to 4 solutions)
 try:
     retval, rvecs, tvecs = cv.solveP3P(
@@ -247,7 +247,7 @@ try:
         print(f"  Distance from true: {np.linalg.norm(camera_pos - pos.flatten()):.3f} mm")
 except cv.error as e:
     print("P3P failed:", e)
-
+'''
 # EPNP (usually 1 solution)
 try:
     ret, rvec, tvec = cv.solvePnP(
@@ -265,7 +265,7 @@ try:
     print(f"  Distance from true: {np.linalg.norm(camera_pos - pos.flatten()):.3f} mm")
 except cv.error as e:
     print("EPnP failed:", e)
-
+'''
 # ITERATIVE (refines to single solution)
 try:
     ret, rvec, tvec = cv.solvePnP(
@@ -283,7 +283,7 @@ try:
     print(f"  Distance from true: {np.linalg.norm(camera_pos - pos.flatten()):.3f} mm")
 except cv.error as e:
     print("Iterative method failed:", e)
-
+'''
 # Convert rotation vector to matrix
 R, _ = cv.Rodrigues(rvec)
 
