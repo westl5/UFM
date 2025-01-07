@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 PLOT_VIEW_DIR = True # Set to True to show viewing directions and looking points
 CONSIDER_DISTORTION = True
 
-PATTERN_TYPE = 'six'  # Options: 'square' or 'six'
+PATTERN_TYPE = 'test_shape'  # Options: 'square' or 'six' or 'test_shape'
 
 BASE_DISTANCE = 200  # Distance between base LEDs in mm for 6-point pattern
 CURSOR_LIMIT_PERCENT = 40  # Cursor movement limit as percentage of pattern size (To be changed in the future, once occlusion and/or missing points are considered)
@@ -50,16 +50,16 @@ test_num = -70
 # Define dictionary of camera positions and their targets
 CAMERA_POSITIONS = {
     'front': (np.array([0, 0, 200]), np.array([0, 0, 0])),      # Looking straight down
-    'side': (np.array([-100, 0, 200]), np.array([0, 0, 0])),     # Side view from high angle
+    'side': (np.array([-100, 0, 100]), np.array([0, 0, 0])),     # Side view from high angle
     'angle': (np.array([-50, -50, 75]), np.array([0, 0, 0])),   # 45-degree angle view
     'high': (np.array([-25, -25, 150]), np.array([0, 0, 0])),   # High overhead view
     'close': (np.array([-10, -10, 50]), np.array([0, 0, 0])),   # Close overhead view
     'far': (np.array([test_num, 50, 200]), np.array([test_num, 50, 0])),    # Far overhead view
-    'offset': (np.array([-50, 25, 100]), np.array([0, 0, 0]))   # Offset overhead view
+    'offset': (np.array([-50, 25, 200]), np.array([-50, 25, 0]))   # Offset overhead view
 }
 
 # Select camera position (change this string to test different positions)
-position_type = 'side'  # Options: 'front', 'side', 'angle', 'high', 'close', 'far', 'offset'
+position_type = 'offset'  # Options: 'front', 'side', 'angle', 'high', 'close', 'far', 'offset'
 
 # Get camera position and target
 camera_pos, target_point = CAMERA_POSITIONS[position_type]
@@ -73,7 +73,7 @@ def create_square_pattern():
     Creates a square pattern with 4 points
     100mm separation between points
     """
-    spacing = 100  # Distance between points (100mm)
+    spacing =  BASE_DISTANCE # Distance between points (100mm)
     
     # Square points (z=0)
     points = np.array([
@@ -82,13 +82,41 @@ def create_square_pattern():
         [spacing/2, spacing/2, 0],    # Top right
         [-spacing/2, spacing/2, 0]    # Top left
     ], dtype=np.float32)
-    
+
     dimensions = {
         'spacing': spacing,
         'num_points': 4,
         'type': 'square'
     }
     
+    return points, dimensions
+
+def create_test_pattern():
+    '''
+    Creates a test patttern with any number of points
+    Will be modified and used to test the PnP solver
+    -Try different number of points
+    -Try different point spacing
+    -Try different base shapes
+    All dimenrions in mm
+    '''
+    spacing = BASE_DISTANCE  # Use configurable base distance
+
+    points = np.array([
+        [-spacing/2, -spacing/2, 0],    # Bottom left
+        [spacing/2, -spacing/2, 0],     # Bottom right
+        [spacing/2, spacing/2, 0],      # Top right
+        [-spacing/2, spacing/2, 0],      # Top left
+        [0, 0, 50],                     # center point at 50mm height
+    ], dtype=np.float32)
+
+    dimensions = {
+        'spacing': spacing,
+        'heights': [points[4][2]], 
+        'num_points': 5,
+        'type': 'test_shape'
+    }
+
     return points, dimensions
 
 def create_six_point_pattern():
@@ -118,7 +146,7 @@ def create_six_point_pattern():
     
     dimensions = {
         'spacing': spacing,
-        'heights': [5, 10, 15],  # Practical heights
+        'heights': [upper_points[:,2]], # Practical heights
         'num_points': 6,
         'type': 'six'
     }
@@ -137,6 +165,19 @@ def plot_pattern_3d(ax, points, pattern_type):
         edges = np.array([0, 1, 2, 3, 0])
         ax.plot(points[edges, 0], points[edges, 1], points[edges, 2], 
                'r--', alpha=0.7)
+    elif pattern_type == 'test_shape':
+        # Draw test_shape
+        base_edges = np.array([0, 1, 2, 3, 0])
+        ax.plot(points[base_edges, 0], points[base_edges, 1], points[base_edges, 2], 
+               'r--', alpha=0.7)
+        #draw lines to top point from each base point
+        upper_edges = np.array([0, 4, 1])
+        ax.plot(points[upper_edges, 0], points[upper_edges, 1], points[upper_edges, 2], 
+               'r--', alpha=0.7)
+        upper_edges = np.array([2, 4, 3])
+        ax.plot(points[upper_edges, 0], points[upper_edges, 1], points[upper_edges, 2], 
+               'r--', alpha=0.7)
+        
     elif pattern_type == 'six':  # 'six' pattern
         # Draw base triangle
         base_edges = np.array([0, 1, 2, 0])
@@ -159,6 +200,8 @@ if PATTERN_TYPE == 'square':
     points_3d, pattern_dims = create_square_pattern()
 elif PATTERN_TYPE == 'six':
     points_3d, pattern_dims = create_six_point_pattern()
+elif PATTERN_TYPE == 'test_shape':
+    points_3d, pattern_dims = create_test_pattern()
 else:
     raise ValueError(f"Invalid pattern type: {PATTERN_TYPE}")
 
@@ -167,7 +210,7 @@ print("Calibration Pattern Information:")
 print(f"Pattern type: {pattern_dims['type']}")
 print(f"Number of points: {pattern_dims['num_points']}")
 print(f"Point spacing: {pattern_dims['spacing']} mm")
-if pattern_dims['type'] == 'six':
+if pattern_dims['type'] == 'six' or pattern_dims['type'] == 'test_shape':
     print(f"Upper point heights: {pattern_dims['heights']} mm")
 print("\nPoint coordinates:")
 for i, point in enumerate(points_3d):
@@ -227,7 +270,7 @@ def ensure_positive_z(R, t):
         R = R_flip @ R
         t = R_flip @ t
     return R, t
-'''
+
 # P3P (up to 4 solutions)
 try:
     retval, rvecs, tvecs = cv.solveP3P(
@@ -247,7 +290,7 @@ try:
         print(f"  Distance from true: {np.linalg.norm(camera_pos - pos.flatten()):.3f} mm")
 except cv.error as e:
     print("P3P failed:", e)
-'''
+
 # EPNP (usually 1 solution)
 try:
     ret, rvec, tvec = cv.solvePnP(
@@ -265,7 +308,7 @@ try:
     print(f"  Distance from true: {np.linalg.norm(camera_pos - pos.flatten()):.3f} mm")
 except cv.error as e:
     print("EPnP failed:", e)
-'''
+
 # ITERATIVE (refines to single solution)
 try:
     ret, rvec, tvec = cv.solvePnP(
@@ -283,7 +326,7 @@ try:
     print(f"  Distance from true: {np.linalg.norm(camera_pos - pos.flatten()):.3f} mm")
 except cv.error as e:
     print("Iterative method failed:", e)
-'''
+
 # Convert rotation vector to matrix
 R, _ = cv.Rodrigues(rvec)
 
