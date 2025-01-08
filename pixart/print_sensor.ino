@@ -47,7 +47,7 @@ and has the following connections (these may be reduced in the future):
 */
 
 
-/*
+/* ORIGINAL TRZY COMMENTING
  * Reads object data from PixArt sensor using Adafruit nRF52832 Feather.
  * PCB board connector J1 leads:
  *
@@ -88,6 +88,7 @@ and has the following connections (these may be reduced in the future):
 
 #include <cstdio>
 #include <cstring>
+#include <Arduino.h>
 #include <SPI.h> 
 
 #define SPI_CLK_SPEED 14000000 //14MHz is max value for PixArt sensor
@@ -114,10 +115,10 @@ struct PA_object
   //renders boundary information into a symbol based visualization of the object
   void render(char *output, int pitch, char symbol)
   {
-    int lx = min(97, boundary_left);
-    int rx = min(97, boundary_right);
-    int uy = min(97, boundary_up);
-    int dy = min(97, boundary_down);
+    int lx = min(97, (int) boundary_left);
+    int rx = min(97, (int) boundary_right);
+    int uy = min(97, (int) boundary_up);
+    int dy = min(97, (int) boundary_down);
     Serial.print(lx,DEC);Serial.print(",");Serial.print(rx,DEC);Serial.print(",");Serial.print(uy,DEC);Serial.print(",");Serial.print(dy,DEC);Serial.print("\n");
     for (int y = uy; y <= dy; y++)
     {
@@ -212,6 +213,23 @@ void PA_burst_read(uint8_t reg_base, uint8_t buffer[], uint16_t num_bytes)
     buffer[i] = SPI.transfer(0);
   }
 }
+
+double PA_get_frame_period_microseconds()
+{
+  PA_write(0xef, 0x0c); // bank C
+  uint32_t cmd_frame_period = PA_read(0x07);
+  cmd_frame_period |= PA_read(0x08) << 8;
+  cmd_frame_period |= PA_read(0x09) << 16;
+  double frame_period_100ns = (double) cmd_frame_period;
+  double frame_period_millis = frame_period_100ns * 1e-1; // 100 ns -> us
+  return frame_period_millis;
+}
+
+double PA_get_frame_period_milliseconds()
+{
+  return 1e-3 * PA_get_frame_period_microseconds();
+}
+
 //Prints settings of the sensor per object 
 void PA_print_settings()
 {
@@ -396,22 +414,6 @@ void PA_set_debug_image(uint8_t image_num)
   PA_write(0x2b, image_num);
   //PA_write(0xef, 0x01); // APPLY_COMMAND_1 (needed?)
   PA_write(0x01, 0x01); // APPLY_COMMAND_2 (...)
-}
-
-double PA_get_frame_period_microseconds()
-{
-  PA_write(0xef, 0x0c); // bank C
-  uint32_t cmd_frame_period = PA_read(0x07);
-  cmd_frame_period |= PA_read(0x08) << 8;
-  cmd_frame_period |= PA_read(0x09) << 16;
-  double frame_period_100ns = (double) cmd_frame_period;
-  double frame_period_millis = frame_period_100ns * 1e-1; // 100 ns -> us
-  return frame_period_millis;
-}
-
-double PA_get_frame_period_milliseconds()
-{
-  return 1e-3 * PA_get_frame_period_microseconds();
 }
 
 void PA_read_report(PA_object objs[16], int format)
