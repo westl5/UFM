@@ -90,6 +90,8 @@ and has the following connections (these may be reduced in the future):
 #include <cstring>
 #include <SPI.h> 
 
+#define SPI_CLK_SPEED 14000000 //14MHz is max value for PixArt sensor
+
 static unsigned s_frame_period_micros;
 
 struct PA_object
@@ -203,9 +205,9 @@ uint8_t PA_read(uint8_t reg)
 //Burst reads data from specified register using SPI, and stores it in buffer
 void PA_burst_read(uint8_t reg_base, uint8_t buffer[], uint16_t num_bytes)
 {
-  SPI.transfer(0x81);
-  SPI.transfer(reg_base);
-  for (uint16_t i = 0; i < num_bytes; i++)
+  SPI.transfer(0x81); //0b 1000 0001 bit 7 = read (1), bits 6-0 = multyple bytes (1)
+  SPI.transfer(reg_base); //specify register to start reading from
+  for (uint16_t i = 0; i < num_bytes; i++) // read num_bytes of data
   {
     buffer[i] = SPI.transfer(0);
   }
@@ -258,18 +260,26 @@ void PA_print_settings()
 //Performs initial settings sequence as per PAJ7025R3 datasheet
 void PA_load_initial_settings()
 {
-  PA_write(0xef, 0x00); //switch to bank 0x00
-  PA_write(0xdc, 0x00); 
-  PA_write(0xfb, 0x04); 
+  //0xef is the bank select register, holds value bank_no[7:0]
+  //switch to bank 0x00
   PA_write(0xef, 0x00); 
-  PA_write(0x2f, 0x05);  
-  PA_write(0x30, 0x00); 
-  PA_write(0x30, 0x01); 
-  PA_write(0x1f, 0x00);
-  PA_write(0xef, 0x01);
-  PA_write(0x2d, 0x00);
-  PA_write(0xef, 0x0c);
-  PA_write(0x64, 0x00);
+  PA_write(0xdc, 0x00); //as per initial settings sequence, register purpose not specified in datasheet
+  PA_write(0xfb, 0x04); //as per initial settings sequence, register purpose not specified in datasheet
+
+  //switch to bank 0x00
+  PA_write(0xef, 0x00); 
+  PA_write(0x2f, 0x05); //set cmd_manual_powercontrol_sensor_on to 1 at bits 0 and 2 (power on sensor)
+  PA_write(0x30, 0x00); //make manual power control effective by first setting update flag 0
+  PA_write(0x30, 0x01); //then set flag to 1
+  PA_write(0x1f, 0x00); //as per initial settings sequence, register purpose not specified in datasheet
+  
+  //switch to bank 0x01
+  PA_write(0xef, 0x01); 
+  PA_write(0x2d, 0x00); 
+
+  //switch to bank 0x0C
+  PA_write(0xef, 0x0c); 
+  PA_write(0x64, 0x00); //purpose of registers 0x12,0x13 and 0x64-0x72 not specified in datasheet
   PA_write(0x65, 0x00);
   PA_write(0x66, 0x00);
   PA_write(0x67, 0x00);
@@ -281,9 +291,10 @@ void PA_load_initial_settings()
   PA_write(0x71, 0x00);
   PA_write(0x72, 0x00);
   PA_write(0x12, 0x00);
-  PA_write(0x13, 0x00);
-  PA_write(0xef, 0x00);
-  PA_write(0x01, 0x01);
+  PA_write(0x13, 0x00); 
+
+  PA_write(0xef, 0x00);  //switch to bank 0x00
+  PA_write(0x01, 0x01);  // APPLY_COMMAND_2 (bank0_synch_updated_flag = 1)
 }
 //Set frame rate for settings for the sensor, only applicable in STREAM mode
 void PA_set_frame_rate(double hz)
@@ -334,34 +345,34 @@ void PA_set_sensor_gain(uint8_t b_global, uint8_t b_ggh)
   | b_ggh | 0 | 2 | 3 |
   | H     | 1 | 2 | 4 |
 
-  Gain Table
-  +---------------------------------+
-  | Gain |          b_ggh           |
-  |      | 0x00   | 0x02   | 0x03   |
-  +---------------------------------+
-  | 0x00 | 1.0000 | 2.0000 | 4.0000 |
-  | 0x01 | 1.0625 | 2.1250 | 4.2500 |
-  | 0x02 | 1.1250 | 2.2500 | 4.5000 |
-  | 0x03 | 1.1875 | 2.3750 | 4.7500 |
-  | 0x04 | 1.2500 | 2.5000 | 5.0000 |
-  | 0x05 | 1.3125 | 2.6250 | 5.2500 |
-  | 0x06 | 1.3750 | 2.7500 | 5.5000 |
-  | 0x07 | 1.4375 | 2.8750 | 5.7500 |
-  | 0x08 | 1.5000 | 3.0000 | 6.0000 |
-  | 0x09 | 1.5625 | 3.1250 | 6.2500 |
-  | 0x0a | 1.6250 | 3.2500 | 6.5000 |
-  | 0x0b | 1.6875 | 3.3750 | 6.7500 |
-  | 0x0c | 1.7500 | 3.5000 | 7.0000 |
-  | 0x0d | 1.8125 | 3.6250 | 7.2500 |
-  | 0x0e | 1.8750 | 3.7500 | 7.5000 |
-  | 0x0f | 1.9375 | 3.8750 | 7.7500 |
-  | 0x10 | 2.0000 | 4.0000 | 8.0000 |
-  +---------------------------------+
+  Sensor Gain Table (from datasheet)
+  +------------------------------------------+
+  |     Gain      |          b_ggh           |
+  |               |  0x00  |  0x02  |  0x03  |
+  +------------------------------------------+
+  |          0x00 | 1.0000 | 2.0000 | 4.0000 |
+  |          0x01 | 1.0625 | 2.1250 | 4.2500 |
+  |          0x02 | 1.1250 | 2.2500 | 4.5000 |
+  |          0x03 | 1.1875 | 2.3750 | 4.7500 |
+  |          0x04 | 1.2500 | 2.5000 | 5.0000 |
+  |          0x05 | 1.3125 | 2.6250 | 5.2500 |
+  |          0x06 | 1.3750 | 2.7500 | 5.5000 |
+  |          0x07 | 1.4375 | 2.8750 | 5.7500 |
+  | b_global 0x08 | 1.5000 | 3.0000 | 6.0000 |
+  |          0x09 | 1.5625 | 3.1250 | 6.2500 |
+  |          0x0a | 1.6250 | 3.2500 | 6.5000 |
+  |          0x0b | 1.6875 | 3.3750 | 6.7500 |
+  |          0x0c | 1.7500 | 3.5000 | 7.0000 |
+  |          0x0d | 1.8125 | 3.6250 | 7.2500 |
+  |          0x0e | 1.8750 | 3.7500 | 7.5000 |
+  |          0x0f | 1.9375 | 3.8750 | 7.7500 |
+  |          0x10 | 2.0000 | 4.0000 | 8.0000 |
+  +------------------------------------------+
   */
  
   PA_write(0xef, 0x0c); // switch to bank 0x0C
-  PA_write(0x0b, b_global & 0x1f);
-  PA_write(0x0c, b_ggh & 3);
+  PA_write(0x0b, b_global & 0x1f); // b_global [4:0] stored in 0x0B
+  PA_write(0x0c, b_ggh & 3);  // b_ggh [1:0] stored in 0x0C
   PA_write(0xef, 0x01); // APPLY_COMMAND_1 (switch to register bank 0x01)
   PA_write(0x01, 0x01); // APPLY_COMMAND_2 (bank1_synch_updated_flag)
 
@@ -370,6 +381,17 @@ void PA_set_sensor_gain(uint8_t b_global, uint8_t b_ggh)
 
 void PA_set_debug_image(uint8_t image_num)
 {
+  /*
+  DSP Settings; test images
+  write one of following image_num values to 0x2b register in bank 0x01 to set test image
+
+  0x00: test image off
+  0x05: 16 fixed objects
+  0x06: 4 fixed objects
+  0x07: circling moving objects
+  0x0b: 4 fixed 1 pixel boundary objects
+  */
+
   PA_write(0xef, 0x01); // bank 1
   PA_write(0x2b, image_num);
   //PA_write(0xef, 0x01); // APPLY_COMMAND_1 (needed?)
@@ -420,8 +442,8 @@ void PA_read_report(PA_object objs[16], int format)
       break;
   }
 
-  PA_write(0xef, format_code);
-  PA_burst_read(0, report, num_bytes);
+  PA_write(0xef, format_code); //switch to register bank with desired data format
+  PA_burst_read(0, report, num_bytes); //read all sensor data into report buffer to get object data
 
   int label_size = num_bytes / 16;
   for (int i = 0; i < 16; i++)
@@ -434,35 +456,37 @@ void PA_init()
 {
 
   // SPI begin
-  SPI.beginTransaction(SPISettings(14000000, LSBFIRST, SPI_MODE3));
+  SPI.beginTransaction(SPISettings(SPI_CLK_SPEED, LSBFIRST, SPI_MODE3));
 
   // Set up
-  digitalWrite(A0, 0);  // chip select
-  PA_load_initial_settings();
+  digitalWrite(A0, 0);  // chip select pulled low to start communication with sensor
+  PA_load_initial_settings(); //load initial settings as per datasheet sequence
+
   //PA_set_frame_rate(30);
   //PA_set_frame_rate(200.88);
   //PA_set_sensor_exposure_time(1.6384e-3);
   //PA_set_sensor_gain(0x10, 0);
-  PA_set_debug_image(0);
-  PA_print_settings();
-  s_frame_period_micros = (unsigned) PA_get_frame_period_microseconds();
 
-  digitalWrite(A0, 1);
+  PA_set_debug_image(0); //turn off debug image mode 
+  PA_print_settings(); //print settings to serial monitor
+  s_frame_period_micros = (unsigned) PA_get_frame_period_microseconds(); //get frame period in microseconds
 
-  // Read first frame
+  digitalWrite(A0, 1); //deassert chip select to end SPI transaction
+
+  // Read first frame from sensor
   for (int i = 0; i < 1; i++)
   {
     delayMicroseconds(s_frame_period_micros);
   }
-  digitalWrite(A0, 0);
-  PA_object objs[16];
-  PA_read_report(objs, 1);
-  digitalWrite(A0, 1);
+  digitalWrite(A0, 0); //CSB low to start SPI transaction
+  PA_object objs[16]; //create object array to store object data
+  PA_read_report(objs, 1); //read object data into object array
+  digitalWrite(A0, 1); //CSB high to end SPI transaction
 
   // SPI end
   //SPI.endTransaction();
 
-  // Print detected objects
+  // Print detected objects from the first frame read
   for (int i = 0; i < 16; i++)
   {
     Serial.print("Object ");
@@ -473,7 +497,7 @@ void PA_init()
     objs[i].print();
   }
 
-  // Render image
+  // Render image of detected objects in first frame
   char *image = (char *) malloc((98 + 1) * 98 + 1);
   memset(image, '.', 99 * 98);
   for (int y = 0; y < 98; y++)
@@ -493,13 +517,13 @@ void PA_init()
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(9600); //serial communication using UART through USB-C to get data from sensor (will be chanaged to bluetooth later)
 
-  pinMode(A0, OUTPUT);
-  digitalWrite(A0, 1);
-  SPI.begin();
+  pinMode(A0, OUTPUT); //chip select pin
+  digitalWrite(A0, 1); //deassert chip select to start
+  SPI.begin(); //init SPI communication
 
-  PA_init();
+  PA_init(); //initialize sensor
 
 
   //SPI.end();
@@ -512,8 +536,8 @@ void loop() {
 
   // put your main code here, to run repeatedly
   delayMicroseconds(s_frame_period_micros);
-  digitalWrite(A0, 0);
-  PA_object objs[16];
+  digitalWrite(A0, 0); //start SPI transaction
+  PA_object objs[16]; //initialize objects array
   PA_read_report(objs, 1);
   digitalWrite(A0, 1);  // deasserting CS seems to be required for next frame readout
 
