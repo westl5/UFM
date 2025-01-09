@@ -39,8 +39,8 @@ and has the following connections (these may be reduced in the future):
   G8/VSYNCH      -> UNUSED
   G9/CSB         -> GPIO 5
   G10/SCK        -> GPIO 18
-  G11/MISO       -> GPIO 23
-  G12/MOSI       -> GPIO 19
+  G11/MISO       -> GPIO 19
+  G12/MOSI       -> GPIO 23
   GND            -> GND
 
   IR LEDs: OSRAM SF 4356, 860nm wavelength, which is within the PixArt PAJ7025R3's detection range of 800-900nm 
@@ -76,7 +76,7 @@ and has the following connections (these may be reduced in the future):
  * Connections to nRF52832 board headers:
  *
  *    VDDMA    -> +3.3v (recommend pin nearest GND)
- *    G9/CSB   -> A0
+ *    G9/CSB   -> SS
  *    G10/SCK  -> SCK
  *    G11/MISO -> MISO (note MISO and MOSI ordering reversed from PixArt PCB)
  *    G12/MOSI -> MOSI
@@ -92,6 +92,7 @@ and has the following connections (these may be reduced in the future):
 #include <SPI.h> 
 
 #define SPI_CLK_SPEED 14000000 //14MHz is max value for PixArt sensor
+#define DEBUG_IMAGE 0x06
 
 static unsigned s_frame_period_micros;
 
@@ -230,7 +231,7 @@ double PA_get_frame_period_milliseconds()
   return 1e-3 * PA_get_frame_period_microseconds();
 }
 
-//Prints settings of the sensor per object 
+//Prints settings of the sensor
 void PA_print_settings()
 {
     // Register bank 0
@@ -461,7 +462,7 @@ void PA_init()
   SPI.beginTransaction(SPISettings(SPI_CLK_SPEED, LSBFIRST, SPI_MODE3));
 
   // Set up
-  digitalWrite(A0, 0);  // chip select pulled low to start communication with sensor
+  digitalWrite(SS, 0);  // chip select pulled low to start communication with sensor
   PA_load_initial_settings(); //load initial settings as per datasheet sequence
 
   //PA_set_frame_rate(30);
@@ -469,21 +470,21 @@ void PA_init()
   //PA_set_sensor_exposure_time(1.6384e-3);
   //PA_set_sensor_gain(0x10, 0);
 
-  PA_set_debug_image(0); //turn off debug image mode 
+  PA_set_debug_image(DEBUG_IMAGE); //turn off debug image mode 
   PA_print_settings(); //print settings to serial monitor
   s_frame_period_micros = (unsigned) PA_get_frame_period_microseconds(); //get frame period in microseconds
 
-  digitalWrite(A0, 1); //deassert chip select to end SPI transaction
+  digitalWrite(SS, 1); //deassert chip select to end SPI transaction
 
   // Read first frame from sensor
   for (int i = 0; i < 1; i++)
   {
     delayMicroseconds(s_frame_period_micros);
   }
-  digitalWrite(A0, 0); //CSB low to start SPI transaction
+  digitalWrite(SS, 0); //CSB low to start SPI transaction
   PA_object objs[16]; //create object array to store object data
   PA_read_report(objs, 1); //read object data into object array
-  digitalWrite(A0, 1); //CSB high to end SPI transaction
+  digitalWrite(SS, 1); //CSB high to end SPI transaction
 
   // SPI end
   //SPI.endTransaction();
@@ -519,10 +520,11 @@ void PA_init()
 }
 
 void setup() {
+
   Serial.begin(9600); //serial communication using UART through USB-C to get data from sensor (will be chanaged to bluetooth later)
 
-  pinMode(A0, OUTPUT); //chip select pin
-  digitalWrite(A0, 1); //deassert chip select to start
+  pinMode(SS, OUTPUT); //chip select pin
+  digitalWrite(SS, 1); //deassert chip select to start
   SPI.begin(); //init SPI communication
 
   PA_init(); //initialize sensor
@@ -530,24 +532,31 @@ void setup() {
 
   //SPI.end();
 
-  //digitalWrite(A0, 1);
+  //digitalWrite(SS, 1);
   //SPI.beginTransaction(SPISettings(14000000, LSBFIRST, SPI_MODE3));
 }
 
 void loop() {
 
   // put your main code here, to run repeatedly
+  //Serial.print("Loop Start\n");
   delayMicroseconds(s_frame_period_micros);
-  digitalWrite(A0, 0); //start SPI transaction
+  digitalWrite(SS, 0); //Assert CSB Low
+  PA_print_settings();
   PA_object objs[16]; //initialize objects array
   PA_read_report(objs, 1);
-  digitalWrite(A0, 1);  // deasserting CS seems to be required for next frame readout
-
+  digitalWrite(SS, 1);  // deasserting CS seems to be required for next frame readout
+  
   char buffer[1024];
   char *ptr = buffer;
-  ptr += sprintf(ptr, "(%d,%d)\n", objs[0].boundary_left, objs[0].boundary_up);
+  ptr += sprintf(ptr, "(%d,%d)\n", objs[0].cx, objs[0].cy);
+  ptr += sprintf(ptr, "(%d,%d)\n", objs[1].cx, objs[1].cy);
+  ptr += sprintf(ptr, "(%d,%d)\n", objs[2].cx, objs[2].cy);
+  ptr += sprintf(ptr, "(%d,%d)\n", objs[3].cx, objs[3].cy);
   Serial.print(buffer);
+  
+  
 
-  delayMicroseconds(1000000);
+  //delayMicroseconds(100000);
 
 }
