@@ -413,7 +413,7 @@ void PA_set_debug_image(uint8_t image_num)
 
   PA_write(0xef, 0x01); // bank 1
   PA_write(0x2b, image_num);
-  //PA_write(0xef, 0x01); // APPLY_COMMAND_1 (needed?)
+  PA_write(0xef, 0x01); // APPLY_COMMAND_1 (needed?)
   PA_write(0x01, 0x01); // APPLY_COMMAND_2 (...)
 }
 
@@ -542,7 +542,7 @@ void loop() {
   //Serial.print("Loop Start\n");
   delayMicroseconds(s_frame_period_micros);
   digitalWrite(SS, 0); //Assert CSB Low
-  PA_print_settings();
+  //PA_print_settings();
   PA_object objs[16]; //initialize objects array
   PA_read_report(objs, 1);
   digitalWrite(SS, 1);  // deasserting CS seems to be required for next frame readout
