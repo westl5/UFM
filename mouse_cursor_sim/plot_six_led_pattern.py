@@ -74,7 +74,7 @@ def plot_six_led_pattern(points):
     # Set limits for better visualization
     ax.set_xlim([-100, 100])
     ax.set_ylim([-100, 100])
-    ax.set_zlim([0, 20])
+    ax.set_zlim([0, 50])
 
     # Annotate coordinates of each point
     for i, point in enumerate(points):
