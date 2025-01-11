@@ -1,4 +1,4 @@
-"""
+'''
 MCMASTER ECE CAPSTONE 2025
 UFM (Unidentified Flying Mouse) - Group 10
 
@@ -6,7 +6,7 @@ File Name         : test_pnp_opencv.py
 Originator        : L. West, westl5
 Purpose           : Test Code for Localization of User's Wrist in Space Using One PixArt PAJ7025R3
 Date Last Modified: 2024/Jan/03 by L. West
-"""
+'''
 
 import numpy as np
 import cv2 as cv
@@ -15,11 +15,13 @@ import matplotlib.pyplot as plt
 # Configuration flags
 PLOT_VIEW_DIR = True # Set to True to show viewing directions and looking points
 CONSIDER_DISTORTION = True
+CONSIDER_NOISE = True
 
 PATTERN_TYPE = 'six'  # Options: 'square' or 'six' or 'test_shape'
 
 BASE_DISTANCE = 100  # Distance between base LEDs in mm for 6-point pattern
-CURSOR_LIMIT_PERCENT = 40  # Cursor movement limit as percentage of pattern size (To be changed in the future, once occlusion and/or missing points are considered)
+CURSOR_LIMIT_PERCENT = 200  # Cursor movement limit as percentage of pattern size (To be changed in the future, once occlusion and/or missing points are considered)
+NOISE_STDEV = 0.2  # Standard deviation of Gaussian noise added to 2D points
 
 # Define camera parameters (from PixArt PAJ7025R3 datasheet)
 f_eff = 0.378        # focal length (mm)
@@ -47,7 +49,7 @@ test_num = -70
 CAMERA_POSITIONS = {
     'front': (np.array([0, 0, 200]), np.array([0, 0, 0])),      # Looking straight down
     'side': (np.array([-100, 0, 100]), np.array([0, 0, 0])),     # Side view from high angle
-    'angle': (np.array([-50, -50, 200]), np.array([0, 0, 0])),   # 45-degree angle view
+    'angle': (np.array([-100, -100, 200]), np.array([0, 0, 0])),   # 45-degree angle view
     'high': (np.array([-25, -25, 150]), np.array([0, 0, 0])),   # High overhead view
     'close': (np.array([-10, -10, 50]), np.array([0, 0, 0])),   # Close overhead view
     'far': (np.array([test_num, 50, 200]), np.array([test_num, 50, 0])),    # Far overhead view
@@ -55,7 +57,7 @@ CAMERA_POSITIONS = {
 }
 
 # Select camera position (change this string to test different positions)
-position_type = 'side'  # Options: 'front', 'side', 'angle', 'high', 'close', 'far', 'offset'
+position_type = 'angle'  # Options: 'front', 'side', 'angle', 'high', 'close', 'far', 'offset'
 
 # Get camera position and target
 camera_pos, target_point = CAMERA_POSITIONS[position_type]
@@ -64,11 +66,13 @@ print(f"\nUsing camera position: {position_type}")
 print(f"Camera position: {camera_pos}")
 print(f"Target point: {target_point}")
 
+#--------- HELPER FUNCTIONS ------------
+
 def create_square_pattern():
-    """
+    '''
     Creates a square pattern with 4 points
     100mm separation between points
-    """
+    '''
     spacing =  BASE_DISTANCE # Distance between points (100mm)
     
     # Square points (z=0)
@@ -103,25 +107,28 @@ def create_test_pattern():
         [spacing/2, -spacing/2, 0],     # Bottom right
         [spacing/2, spacing/2, 0],      # Top right
         [-spacing/2, spacing/2, 0],      # Top left
-        [0, 0, 50],                     # center point at 50mm height
+        [-spacing/4, -spacing/4, 0],
+        [spacing/4, -spacing/4, 0],
+        [spacing/4, spacing/3, 0],
+                                                  # center point at 50mm height
     ], dtype=np.float32)
 
     dimensions = {
         'spacing': spacing,
         'heights': [points[4][2]], 
-        'num_points': 5,
+        'num_points': 7,
         'type': 'test_shape'
     }
 
     return points, dimensions
 
 def create_six_point_pattern():
-    """
+    '''
     Creates a 3D point pattern with 6 IR LED points:
     - Base triangle (3 points) with configurable spacing
     - Three points at practical heights forming a second triangle
     All dimensions in mm
-    """
+    '''
     spacing = BASE_DISTANCE  # Use configurable base distance
     
     # Base triangle points (z=0)
@@ -192,6 +199,72 @@ def plot_pattern_3d(ax, points, pattern_type):
     else:
         raise ValueError(f"Invalid pattern type: {pattern_type}")
     
+def addNoise(points, mean, std_dev, shape):
+    '''
+    Adds gaussian noise to the points
+    '''
+    gaussian_noise = np.random.normal(mean, std_dev, shape)
+    return points + gaussian_noise
+
+#camera cannot be below points, recovered z param is +ve
+def ensure_positive_z(R, t):
+    '''Ensure camera is on the positive Z side of the points'''
+    pos = -R.T @ t
+    if pos[2] < 0:  # If camera is on negative Z side
+        print("Flipping camera to positive Z side...")
+        # Rotate 180 degrees around X axis to flip Z
+        R_flip = np.array([
+            [1, 0, 0],
+            [0, -1, 0],
+            [0, 0, -1]
+        ])
+        R = R_flip @ R
+        t = R_flip @ t
+    return R, t
+
+#!!! to be changed to work more like the pixart camera, which tracks the points !!!
+# Add after projecting the points but before plotting:
+
+def get_display_order(points_2d):
+    '''
+    Returns indices that would sort points from top to bottom, left to right
+    in the 2D projection (matches how pixart tracks points)
+    '''
+    # Create array of (y, x) coordinates for sorting
+    yx_coords = np.column_stack((-points_2d[:, 1], points_2d[:, 0]))  # Negative y for top-to-bottom
+    
+    # Get sorting indices based on y first, then x
+    return np.lexsort((yx_coords[:, 1], yx_coords[:, 0]))
+
+# Convert camera position to screen coordinates
+def camera_to_screen(camera_pos, screen_width, screen_height, pattern_spacing):
+    """
+    Convert camera position to screen coordinates
+    Maps pattern_spacing to screen edges
+    +ve Y moves cursor up, +ve X moves cursor to the right
+    """
+    # Define mapping range using percentage of pattern spacing (temporary fix for occlusion)
+    limit = pattern_spacing * (CURSOR_LIMIT_PERCENT/100)  # Convert percentage to decimal
+    x_range = [-limit, limit]  # mm
+    y_range = [-limit, limit]  # mm
+    
+    # Clip camera position to range
+    x = np.clip(camera_pos[0], x_range[0], x_range[1])
+    y = np.clip(camera_pos[1], y_range[0], y_range[1])
+    
+    # Map to screen coordinates
+    screen_x = ((x - x_range[0]) / (x_range[1] - x_range[0])) * screen_width
+    screen_y = ((y - y_range[0]) / (y_range[1] - y_range[0])) * screen_height
+    
+    # Add text to indicate if position is clipped
+    clipped = False
+    if abs(camera_pos[0]) > limit or abs(camera_pos[1]) > limit:
+        clipped = True
+    
+    return screen_x, screen_y, clipped
+
+#--------- MAIN CODE ------------
+    
 if PATTERN_TYPE == 'square':
     points_3d, pattern_dims = create_square_pattern()
 elif PATTERN_TYPE == 'six':
@@ -202,8 +275,8 @@ else:
     raise ValueError(f"Invalid pattern type: {PATTERN_TYPE}")
 
 # Update pattern information printing
-print("Calibration Pattern Information:")
-print(f"Pattern type: {pattern_dims['type']}")
+print("LED Object Information:")
+print(f"Object type: {pattern_dims['type']}")
 print(f"Number of points: {pattern_dims['num_points']}")
 print(f"Point spacing: {pattern_dims['spacing']} mm")
 if pattern_dims['type'] == 'six' or pattern_dims['type'] == 'test_shape':
@@ -237,27 +310,10 @@ rvec_true, _ = cv.Rodrigues(R_true)
 points_2d_cv, _ = cv.projectPoints(points_3d, rvec_true, t_true, camera_matrix, dist_coeffs)
 points_2d_cv = points_2d_cv.reshape(-1, 2)
 
-# Convert to centered coordinates (for plotting and to match)
-projected_points = points_2d_cv.copy()
-projected_points[:, 0] -= resolution/2
-projected_points[:, 1] = -projected_points[:, 1] + resolution/2
-'''
-#camera cannot be below points, recovered z param is +ve
-def ensure_positive_z(R, t):
-    """Ensure camera is on the positive Z side of the points"""
-    pos = -R.T @ t
-    if pos[2] < 0:  # If camera is on negative Z side
-        print("Flipping camera to positive Z side...")
-        # Rotate 180 degrees around X axis to flip Z
-        R_flip = np.array([
-            [1, 0, 0],
-            [0, -1, 0],
-            [0, 0, -1]
-        ])
-        R = R_flip @ R
-        t = R_flip @ t
-    return R, t
-'''
+if CONSIDER_NOISE:
+    # Add Gaussian noise to 2D points
+    points_2d_cv = addNoise(points_2d_cv, 0, NOISE_STDEV, points_2d_cv.shape)
+
 # Try different methods to see multiple solutions
 print("\nTesting different PnP methods and solutions:")
 
@@ -273,7 +329,7 @@ try:
     print(f"\nP3P solutions found: {len(rvecs)}")
     for i, (rvec, tvec) in enumerate(zip(rvecs, tvecs)):
         R, _ = cv.Rodrigues(rvec)
-        #R, tvec = ensure_positive_z(R, tvec)
+        R, tvec = ensure_positive_z(R, tvec)
         pos = -R.T @ tvec
         print(f"Solution {i+1}:")
         print(f"  Position: {pos.flatten()}")
@@ -291,7 +347,7 @@ try:
         flags=cv.SOLVEPNP_EPNP
     )
     R, _ = cv.Rodrigues(rvec)
-    #R, tvec = ensure_positive_z(R, tvec)
+    R, tvec = ensure_positive_z(R, tvec)
     pos = -R.T @ tvec
     print(f"\nEPnP solution:")
     print(f"  Position: {pos.flatten()}")
@@ -309,7 +365,7 @@ try:
         flags=cv.SOLVEPNP_ITERATIVE
     )
     R, _ = cv.Rodrigues(rvec)
-    #R, tvec = ensure_positive_z(R, tvec)
+    R, tvec = ensure_positive_z(R, tvec)
     pos = -R.T @ tvec
     print(f"\nIterative solution:")
     print(f"  Position: {pos.flatten()}")
@@ -317,14 +373,6 @@ try:
 except cv.error as e:
     print("Iterative method failed:", e)
 
-'''
-try:
-    ret, rvec, tvec = cv.solvePnPGeneric(
-        points_3d,
-        points_2d_cv,
-
-    )
-'''
 # Convert rotation vector to matrix
 R, _ = cv.Rodrigues(rvec)
 
@@ -372,20 +420,6 @@ ax_3d.scatter(camera_pos[0], camera_pos[1], camera_pos[2],
 ax_3d.scatter(recovered_pos[0], recovered_pos[1], recovered_pos[2], 
              c='g', marker='^', s=200, label='Recovered Camera')
 
-# Draw lines to connect points to form objects
-object_edges = np.array([0, 1, 2, 3, 4, 5, 3, 0])
-ax_3d.plot(points_3d[object_edges, 0], 
-          points_3d[object_edges, 1], 
-          points_3d[object_edges, 2], 'r--')
-object_edges_2 = np.array([4,1])
-ax_3d.plot(points_3d[object_edges_2, 0], 
-          points_3d[object_edges_2, 1], 
-          points_3d[object_edges_2, 2], 'r--')
-object_edges_3 = np.array([5,2])
-ax_3d.plot(points_3d[object_edges_3, 0], 
-          points_3d[object_edges_3, 1], 
-          points_3d[object_edges_3, 2], 'r--')
-
 # Draw viewing directions and looking points
 if PLOT_VIEW_DIR:
     direction_scale = 20
@@ -412,22 +446,8 @@ ax_3d.legend()
 ax_3d.set_box_aspect([1,1,1])
 ax_3d.view_init(elev=30, azim=45)
 
-
-# Add after projecting the points but before plotting:
-
-def get_display_order(points_2d):
-    """
-    Returns indices that would sort points from top to bottom, left to right
-    in the 2D projection (matches how pixart tracks points)
-    """
-    # Create array of (y, x) coordinates for sorting
-    yx_coords = np.column_stack((-points_2d[:, 1], points_2d[:, 0]))  # Negative y for top-to-bottom
-    
-    # Get sorting indices based on y first, then x
-    return np.lexsort((yx_coords[:, 1], yx_coords[:, 0]))
-
 # Get display order based on projected points
-display_order = get_display_order(projected_points)
+display_order = get_display_order(points_2d_cv)
 
 # 3D subplot - add point numbers
 for i, idx in enumerate(display_order):
@@ -439,29 +459,20 @@ for i, idx in enumerate(display_order):
 ax_2d = fig.add_subplot(gs[0,1])
 
 # Plot original projections
-ax_2d.scatter(projected_points[:, 0], projected_points[:, 1], 
+ax_2d.scatter(points_2d_cv[:, 0], points_2d_cv[:, 1], 
              c='r', marker='o', label='True Projections')
 
 # Project points using recovered pose
 projected_points_pnp, _ = cv.projectPoints(points_3d, rvec, tvec, camera_matrix, dist_coeffs)
 projected_points_pnp = projected_points_pnp.reshape(-1, 2)
-# Convert to centered coordinates
-projected_points_pnp[:, 0] -= resolution/2
-projected_points_pnp[:, 1] = -projected_points_pnp[:, 1] + resolution/2
 
 # Plot PnP projections
 ax_2d.scatter(projected_points_pnp[:, 0], projected_points_pnp[:, 1], 
              c='g', marker='x', label='Recovered Projections')
 
-# Draw connecting lines
-ax_2d.plot(projected_points[object_edges, 0], 
-          projected_points[object_edges, 1], 'r--', label='True Object')
-ax_2d.plot(projected_points_pnp[object_edges, 0], 
-          projected_points_pnp[object_edges, 1], 'g--', label='Recovered Object')
-
 # Set axis properties
-ax_2d.set_xlim([-resolution/2, resolution/2])
-ax_2d.set_ylim([-resolution/2, resolution/2])
+ax_2d.set_xlim([0, resolution])
+ax_2d.set_ylim([resolution, 0])
 ax_2d.grid(True)
 ax_2d.set_title('2D Projections')
 ax_2d.set_xlabel('Pixel X')
@@ -471,7 +482,7 @@ ax_2d.set_aspect('equal')
 
 # 2D subplot - add point numbers
 for i, idx in enumerate(display_order):
-    point = projected_points[idx]
+    point = points_2d_cv[idx]
     ax_2d.text(point[0], point[1], f' {i+1}', 
                color='orange', fontsize=10)
     # Also add numbers to PnP projections
@@ -491,33 +502,6 @@ ax_screen = fig.add_subplot(gs[1, :])
 screen_width = 1920
 screen_height = 1080
 screen_aspect = screen_width / screen_height
-
-# Convert camera position to screen coordinates
-def camera_to_screen(camera_pos, screen_width, screen_height, pattern_spacing):
-    """
-    Convert camera position to screen coordinates
-    Maps pattern_spacing to screen edges
-    +ve Y moves cursor up, +ve X moves cursor to the right
-    """
-    # Define mapping range using percentage of pattern spacing (temporary fix for occlusion)
-    limit = pattern_spacing * (CURSOR_LIMIT_PERCENT/100)  # Convert percentage to decimal
-    x_range = [-limit, limit]  # mm
-    y_range = [-limit, limit]  # mm
-    
-    # Clip camera position to range
-    x = np.clip(camera_pos[0], x_range[0], x_range[1])
-    y = np.clip(camera_pos[1], y_range[0], y_range[1])
-    
-    # Map to screen coordinates
-    screen_x = ((x - x_range[0]) / (x_range[1] - x_range[0])) * screen_width
-    screen_y = ((y - y_range[0]) / (y_range[1] - y_range[0])) * screen_height
-    
-    # Add text to indicate if position is clipped
-    clipped = False
-    if abs(camera_pos[0]) > limit or abs(camera_pos[1]) > limit:
-        clipped = True
-    
-    return screen_x, screen_y, clipped
 
 # Get cursor positions for both true and recovered cameras
 true_cursor_x, true_cursor_y, true_clipped = camera_to_screen(
@@ -561,3 +545,15 @@ ax_screen.grid(True)
 
 plt.tight_layout()
 plt.show()
+
+print("true rotation:")
+print(rvec_true)
+print("true translation:")
+print(t_true)
+
+print("recovered rotation:")
+print(rvec)
+print("recovered translation:")
+print(tvec.flatten())
+
+
