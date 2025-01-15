@@ -15,18 +15,18 @@ import matplotlib.pyplot as plt
 # Configuration flags
 PLOT_VIEW_DIR = True # Set to True to show viewing directions and looking points
 CONSIDER_DISTORTION = True
-CONSIDER_NOISE = True
+CONSIDER_NOISE = False
 
-PATTERN_TYPE = 'six'  # Options: 'square' or 'six' or 'test_shape'
+PATTERN_TYPE = 'rect'  # Options: 'rect' or 'six' or 'test_shape'
 
-BASE_DISTANCE = 100  # Distance between base LEDs in mm for 6-point pattern
+BASE_DISTANCE = 100  # Distance between base LEDs in mm
 CURSOR_LIMIT_PERCENT = 200  # Cursor movement limit as percentage of pattern size (To be changed in the future, once occlusion and/or missing points are considered)
 NOISE_STDEV = 0.2  # Standard deviation of Gaussian noise added to 2D points
 
 # Define camera parameters (from PixArt PAJ7025R3 datasheet)
 f_eff = 0.378        # focal length (mm)
-pixel_size = 11e-3   # mm
-resolution = 98      # pixels (square sensor)
+pixel_size = 11e-3   # pixel size in mm
+resolution = 98      # pixels (sensor is a square)
 
 # Create camera matrix (intrinsic parameters)
 fx = fy = f_eff / pixel_size  # focal length in pixels
@@ -44,7 +44,6 @@ if CONSIDER_DISTORTION:
 else:
     dist_coeffs = np.zeros((4,1))
 
-test_num = -70
 # Define dictionary of camera positions and their targets
 CAMERA_POSITIONS = {
     'front': (np.array([0, 0, 200]), np.array([0, 0, 0])),      # Looking straight down
@@ -52,7 +51,7 @@ CAMERA_POSITIONS = {
     'angle': (np.array([-100, -100, 200]), np.array([0, 0, 0])),   # 45-degree angle view
     'high': (np.array([-25, -25, 150]), np.array([0, 0, 0])),   # High overhead view
     'close': (np.array([-10, -10, 50]), np.array([0, 0, 0])),   # Close overhead view
-    'far': (np.array([test_num, 50, 200]), np.array([test_num, 50, 0])),    # Far overhead view
+    'far': (np.array([0, 50, 200]), np.array([0, 50, 0])),    # Far overhead view
     'offset': (np.array([-50, 25, 200]), np.array([-50, 25, 0]))   # Offset overhead view
 }
 
@@ -68,25 +67,27 @@ print(f"Target point: {target_point}")
 
 #--------- HELPER FUNCTIONS ------------
 
-def create_square_pattern():
+def create_rect_pattern():
     '''
-    Creates a square pattern with 4 points
+    Creates a rect pattern with 4 points
     100mm separation between points
     '''
-    spacing =  BASE_DISTANCE # Distance between points (100mm)
+    rect_height =  0.8 # height of object scalar
+    rect_width = 0.3 # width of object scalar
+    spacing = BASE_DISTANCE  # Use configurable base distance
     
-    # Square points (z=0)
+    # rect points (z=0)
     points = np.array([
-        [-spacing/2, -spacing/2, 0],  # Bottom left
-        [spacing/2, -spacing/2, 0],   # Bottom right
-        [spacing/2, spacing/2, 0],    # Top right
-        [-spacing/2, spacing/2, 0]    # Top left
+        [-rect_width*spacing/2, -rect_height*spacing/2, 0],  # Bottom left
+        [rect_width*spacing/2, -rect_height*spacing/2, 0],   # Bottom right
+        [rect_width*spacing/2, rect_height*spacing/2, 0],    # Top right
+        [-rect_width*spacing/2, rect_height*spacing/2, 0]    # Top left
     ], dtype=np.float32)
 
     dimensions = {
         'spacing': spacing,
         'num_points': 4,
-        'type': 'square'
+        'type': 'rect'
     }
     
     return points, dimensions
@@ -98,7 +99,7 @@ def create_test_pattern():
     -Try different number of points
     -Try different point spacing
     -Try different base shapes
-    All dimenrions in mm
+    All dimensions in mm
     '''
     spacing = BASE_DISTANCE  # Use configurable base distance
 
@@ -163,8 +164,8 @@ def plot_pattern_3d(ax, points, pattern_type):
     ax.scatter(points[:, 0], points[:, 1], points[:, 2], 
               c='r', marker='o', s=100, label='Pattern Points')
     
-    if pattern_type == 'square':
-        # Draw square
+    if pattern_type == 'rect':
+        # Draw rect
         edges = np.array([0, 1, 2, 3, 0])
         ax.plot(points[edges, 0], points[edges, 1], points[edges, 2], 
                'r--', alpha=0.7)
@@ -231,7 +232,7 @@ def get_display_order(points_2d):
     in the 2D projection (matches how pixart tracks points)
     '''
     # Create array of (y, x) coordinates for sorting
-    yx_coords = np.column_stack((-points_2d[:, 1], points_2d[:, 0]))  # Negative y for top-to-bottom
+    yx_coords = np.column_stack((points_2d[:, 1], points_2d[:, 0]))
     
     # Get sorting indices based on y first, then x
     return np.lexsort((yx_coords[:, 1], yx_coords[:, 0]))
@@ -265,8 +266,8 @@ def camera_to_screen(camera_pos, screen_width, screen_height, pattern_spacing):
 
 #--------- MAIN CODE ------------
     
-if PATTERN_TYPE == 'square':
-    points_3d, pattern_dims = create_square_pattern()
+if PATTERN_TYPE == 'rect':
+    points_3d, pattern_dims = create_rect_pattern()
 elif PATTERN_TYPE == 'six':
     points_3d, pattern_dims = create_six_point_pattern()
 elif PATTERN_TYPE == 'test_shape':
@@ -309,6 +310,9 @@ rvec_true, _ = cv.Rodrigues(R_true)
 # Project points using true camera pose
 points_2d_cv, _ = cv.projectPoints(points_3d, rvec_true, t_true, camera_matrix, dist_coeffs)
 points_2d_cv = points_2d_cv.reshape(-1, 2)
+print(points_2d_cv)
+#points_2d_cv = points_2d_cv[get_display_order(points_2d_cv)]
+print(points_2d_cv)
 
 if CONSIDER_NOISE:
     # Add Gaussian noise to 2D points
