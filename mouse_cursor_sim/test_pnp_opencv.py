@@ -48,7 +48,7 @@ else:
 CAMERA_POSITIONS = {
     'front': (np.array([0, 0, 200]), np.array([0, 0, 0])),      # Looking straight down
     'side': (np.array([-100, 0, 100]), np.array([0, 0, 0])),     # Side view from high angle
-    'angle': (np.array([-100, -100, 200]), np.array([0, 0, 0])),   # 45-degree angle view
+    'angle': (np.array([-50, -100, 200]), np.array([0, 0, 0])),   # 45-degree angle view
     'high': (np.array([-25, -25, 150]), np.array([0, 0, 0])),   # High overhead view
     'close': (np.array([-10, -10, 50]), np.array([0, 0, 0])),   # Close overhead view
     'far': (np.array([0, 50, 200]), np.array([0, 50, 0])),    # Far overhead view
@@ -301,10 +301,9 @@ up = np.cross(right, forward)
 up = up / np.linalg.norm(up)
 
 # Create rotation matrix from camera vectors
-R_true = np.vstack([-right, -up, -forward])
+R_true = np.vstack([right, -up, forward])
 t_true = -R_true @ camera_pos
 
-# Convert to rotation vector
 rvec_true, _ = cv.Rodrigues(R_true)
 
 # Project points using true camera pose
