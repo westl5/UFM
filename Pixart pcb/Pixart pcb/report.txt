@@ -1,7 +1,0 @@
-Info: Processing symbol 'J2:'.
-Info: Processing symbol 'U1:'.
-Error: Cannot add J2 (no footprint assigned).
-Error: Cannot add U1 (no footprint assigned).
-
-
-Info: Total warnings: 0, errors: 2.
