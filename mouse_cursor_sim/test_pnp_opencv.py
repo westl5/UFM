@@ -48,7 +48,7 @@ else:
 CAMERA_POSITIONS = {
     'front': (np.array([0, 0, 200]), np.array([0, 0, 0])),      # Looking straight down
     'side': (np.array([-100, 0, 100]), np.array([0, 0, 0])),     # Side view from high angle
-    'angle': (np.array([-50, -100, 200]), np.array([0, 0, 0])),   # 45-degree angle view
+    'angle': (np.array([-50, -50, 100]), np.array([0, 0, 0])),   # 45-degree angle view
     'high': (np.array([-25, -25, 150]), np.array([0, 0, 0])),   # High overhead view
     'close': (np.array([-10, -10, 50]), np.array([0, 0, 0])),   # Close overhead view
     'far': (np.array([0, 50, 200]), np.array([0, 50, 0])),    # Far overhead view
@@ -70,10 +70,10 @@ print(f"Target point: {target_point}")
 def create_rect_pattern():
     '''
     Creates a rect pattern with 4 points
-    100mm separation between points
+    100mm base separation between points, scaled by a configured width and height
     '''
-    rect_height =  0.8 # height of object scalar
-    rect_width = 0.3 # width of object scalar
+    rect_width = 0.23 #LED object irl width is 23 mm
+    rect_height = 0.75 #LED object irl height is 75 mm 
     spacing = BASE_DISTANCE  # Use configurable base distance
     
     # rect points (z=0)
@@ -81,7 +81,7 @@ def create_rect_pattern():
         [-rect_width*spacing/2, -rect_height*spacing/2, 0],  # Bottom left
         [rect_width*spacing/2, -rect_height*spacing/2, 0],   # Bottom right
         [rect_width*spacing/2, rect_height*spacing/2, 0],    # Top right
-        [-rect_width*spacing/2, rect_height*spacing/2, 0]    # Top left
+        [-rect_width*spacing/2, rect_height*spacing/2, 0],    # Top left
     ], dtype=np.float32)
 
     dimensions = {
@@ -226,7 +226,7 @@ def ensure_positive_z(R, t):
 #!!! to be changed to work more like the pixart camera, which tracks the points !!!
 # Add after projecting the points but before plotting:
 
-def get_display_order(points_2d):
+def get_point_order(points_2d):
     '''
     Returns indices that would sort points from top to bottom, left to right
     in the 2D projection (matches how pixart tracks points)
@@ -291,31 +291,30 @@ forward = target_point - camera_pos
 forward = forward / np.linalg.norm(forward)
 
 # Calculate right vector, handling the case when forward is parallel to up
-right = np.cross(forward, np.array([0, 0, 1]))
-if np.allclose(right, 0):  # If forward is parallel to up
-    right = np.cross(forward, np.array([1, 0, 0]))  # Use x-axis instead
-right = right / np.linalg.norm(right)
+right = np.cross(forward, np.array([0, 1, 0]))
+#if np.allclose(right, 0):  # If forward is parallel to up
+#  right = np.cross(forward, np.array([1, 0, 0]))  # Use x-axis instead
+#right = right / np.linalg.norm(right)
 
 # Calculate up vector
 up = np.cross(right, forward)
-up = up / np.linalg.norm(up)
+#up = up / np.linalg.norm(up)
 
 # Create rotation matrix from camera vectors
-R_true = np.vstack([right, -up, forward])
+R_true = np.vstack([right, up, -forward])
 t_true = -R_true @ camera_pos
 
 rvec_true, _ = cv.Rodrigues(R_true)
 
 # Project points using true camera pose
-points_2d_cv, _ = cv.projectPoints(points_3d, rvec_true, t_true, camera_matrix, dist_coeffs)
-points_2d_cv = points_2d_cv.reshape(-1, 2)
-print(points_2d_cv)
-#points_2d_cv = points_2d_cv[get_display_order(points_2d_cv)]
-print(points_2d_cv)
+points_2d_true, _ = cv.projectPoints(points_3d, rvec_true, t_true, camera_matrix, dist_coeffs)
+points_2d_true = points_2d_true.reshape(-1, 2)
+
+true_order = get_point_order(points_2d_true)
 
 if CONSIDER_NOISE:
     # Add Gaussian noise to 2D points
-    points_2d_cv = addNoise(points_2d_cv, 0, NOISE_STDEV, points_2d_cv.shape)
+    points_2d_true = addNoise(points_2d_true, 0, NOISE_STDEV, points_2d_true.shape)
 
 # Try different methods to see multiple solutions
 print("\nTesting different PnP methods and solutions:")
@@ -324,7 +323,7 @@ print("\nTesting different PnP methods and solutions:")
 try:
     retval, rvecs, tvecs = cv.solveP3P(
         points_3d[:3],  # Use first 3 points
-        points_2d_cv[:3], 
+        points_2d_true[:3], 
         camera_matrix, 
         dist_coeffs,
         flags=cv.SOLVEPNP_P3P
@@ -344,7 +343,7 @@ except cv.error as e:
 try:
     ret, rvec, tvec = cv.solvePnP(
         points_3d, 
-        points_2d_cv, 
+        points_2d_true, 
         camera_matrix, 
         dist_coeffs,
         flags=cv.SOLVEPNP_EPNP
@@ -358,11 +357,30 @@ try:
 except cv.error as e:
     print("EPnP failed:", e)
 
+# IPPE (multiple solutions)
+try:
+    ret, rvec, tvec = cv.solvePnP(
+        points_3d, 
+        points_2d_true, 
+        camera_matrix, 
+        dist_coeffs,
+        flags=cv.SOLVEPNP_IPPE
+    )
+    R, _ = cv.Rodrigues(rvec)
+    R, tvec = ensure_positive_z(R, tvec)
+    pos = -R.T @ tvec
+    print(f"\nIPPE solution:")
+    print(f"  Position: {pos.flatten()}")
+    print(f"  Distance from true: {np.linalg.norm(camera_pos - pos.flatten()):.3f} mm")
+except cv.error as e:
+    print("EPnP failed:", e)
+
+
 # ITERATIVE (refines to single solution)
 try:
     ret, rvec, tvec = cv.solvePnP(
         points_3d, 
-        points_2d_cv, 
+        points_2d_true, 
         camera_matrix, 
         dist_coeffs,
         flags=cv.SOLVEPNP_ITERATIVE
@@ -379,11 +397,53 @@ except cv.error as e:
 # Convert rotation vector to matrix
 R, _ = cv.Rodrigues(rvec)
 
+# Project points using recovered pose
+points_2d_pnp, _ = cv.projectPoints(points_3d, rvec, tvec, camera_matrix, dist_coeffs)
+points_2d_pnp = points_2d_pnp.reshape(-1, 2)
+
+pnp_order = get_point_order(points_2d_pnp)
+pre_fix_order = pnp_order
+
+# Check if the order is reversed
+if not np.array_equal(true_order, pnp_order):
+    print("Detected mirrored solution. Correcting perspective...")
+    
+    # Apply 180-degree rotation around the Z-axis
+    R_flip = np.array([
+        [-1, 0, 0],
+        [0, -1, 0],
+        [0, 0, 1]
+    ])
+    R_corrected = R_flip @ R
+    t_corrected = R_flip @ tvec
+
+    # Recalculate the rotation vector
+    rvec_corrected, _ = cv.Rodrigues(R_corrected)
+    rvec_corrected[0] = -rvec_corrected[0]  # Invert x rotation
+    rvec_corrected[1] = -rvec_corrected[1]  # Invert y rotation
+
+    t_corrected[0] = -t_corrected[0]  # Invert x translation
+    t_corrected[1] = -t_corrected[1]  # Invert x translation
+
+    
+    # Project points using the corrected pose
+    points_2d_pnp_corrected, _ = cv.projectPoints(points_3d, rvec_corrected, t_corrected, camera_matrix, dist_coeffs)
+    points_2d_pnp_corrected = points_2d_pnp_corrected.reshape(-1, 2)
+
+    # Use the corrected pose for further processing
+    rvec = rvec_corrected
+    tvec = tvec
+    points_2d_pnp = points_2d_pnp_corrected
+    # Convert rotation vector to matrix
+    R, _ = cv.Rodrigues(rvec)
+    
+pnp_order = get_point_order(points_2d_pnp)
+
 # Get initial recovered camera position
 recovered_pos = -R.T @ tvec
 
 # Calculate looking directions properly
-true_forward = (target_point - camera_pos) / np.linalg.norm(target_point - camera_pos)
+true_forward = forward
 recovered_forward = -R[:, 2]  # The camera looks along negative Z in camera coordinates
 
 # Calculate where each camera is looking
@@ -450,7 +510,7 @@ ax_3d.set_box_aspect([1,1,1])
 ax_3d.view_init(elev=30, azim=45)
 
 # Get display order based on projected points
-display_order = get_display_order(points_2d_cv)
+display_order = true_order
 
 # 3D subplot - add point numbers
 for i, idx in enumerate(display_order):
@@ -462,15 +522,11 @@ for i, idx in enumerate(display_order):
 ax_2d = fig.add_subplot(gs[0,1])
 
 # Plot original projections
-ax_2d.scatter(points_2d_cv[:, 0], points_2d_cv[:, 1], 
+ax_2d.scatter(points_2d_true[:, 0], points_2d_true[:, 1], 
              c='r', marker='o', label='True Projections')
 
-# Project points using recovered pose
-projected_points_pnp, _ = cv.projectPoints(points_3d, rvec, tvec, camera_matrix, dist_coeffs)
-projected_points_pnp = projected_points_pnp.reshape(-1, 2)
-
 # Plot PnP projections
-ax_2d.scatter(projected_points_pnp[:, 0], projected_points_pnp[:, 1], 
+ax_2d.scatter(points_2d_pnp[:, 0], points_2d_pnp[:, 1], 
              c='g', marker='x', label='Recovered Projections')
 
 # Set axis properties
@@ -485,11 +541,11 @@ ax_2d.set_aspect('equal')
 
 # 2D subplot - add point numbers
 for i, idx in enumerate(display_order):
-    point = points_2d_cv[idx]
+    point = points_2d_true[idx]
     ax_2d.text(point[0], point[1], f' {i+1}', 
                color='orange', fontsize=10)
     # Also add numbers to PnP projections
-    pnp_point = projected_points_pnp[idx]
+    pnp_point = points_2d_pnp[idx]
     ax_2d.text(pnp_point[0], pnp_point[1], f' {i+1}', 
                color='blue', fontsize=10)
 
@@ -549,6 +605,8 @@ ax_screen.grid(True)
 plt.tight_layout()
 plt.show()
 
+#Debugging
+
 print("true rotation:")
 print(rvec_true)
 print("true translation:")
@@ -559,4 +617,7 @@ print(rvec)
 print("recovered translation:")
 print(tvec.flatten())
 
+print(true_order)
+print(pre_fix_order)
+print(pnp_order)
 
