@@ -1,4 +1,0 @@
-(sym_lib_table
-  (version 0)
-  (lib (name "PixArt-rescue")(type "Legacy")(uri "${KIPRJMOD}/PixArt-rescue.lib")(options "")(descr ""))
-)
