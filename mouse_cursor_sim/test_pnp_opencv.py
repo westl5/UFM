@@ -48,15 +48,15 @@ else:
 CAMERA_POSITIONS = {
     'front': (np.array([0, 0, 200]), np.array([0, 0, 0])),      # Looking straight down
     'side': (np.array([-100, 0, 100]), np.array([0, 0, 0])),     # Side view from high angle
-    'angle': (np.array([-50, -50, 100]), np.array([0, 0, 0])),   # 45-degree angle view
+    'angle': (np.array([-50, 50, 200]), np.array([0, 0, 0])),   # 45-degree angle view
     'high': (np.array([-25, -25, 150]), np.array([0, 0, 0])),   # High overhead view
     'close': (np.array([-10, -10, 50]), np.array([0, 0, 0])),   # Close overhead view
-    'far': (np.array([0, 50, 200]), np.array([0, 50, 0])),    # Far overhead view
-    'offset': (np.array([-50, 25, 200]), np.array([-50, 25, 0]))   # Offset overhead view
+    'far': (np.array([50, 100, 200]), np.array([50, 100, 0])),    # Far overhead view
+    'offset': (np.array([-50, 25, 200]), np.array([-10, 10, 0]))   # Offset overhead view
 }
 
 # Select camera position (change this string to test different positions)
-position_type = 'angle'  # Options: 'front', 'side', 'angle', 'high', 'close', 'far', 'offset'
+position_type = 'far'  # Options: 'front', 'side', 'angle', 'high', 'close', 'far', 'offset'
 
 # Get camera position and target
 camera_pos, target_point = CAMERA_POSITIONS[position_type]
