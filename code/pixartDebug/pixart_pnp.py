@@ -56,7 +56,7 @@ else:
 
 #init serial port
 ser = serial.Serial(
-    port='/dev/cu.usbserial-0001', #Ryan: COM3, Luke: 
+    port='COM4', #/dev/cu.usbserial-0001', #Ryan: COM3, Luke: 
     baudrate=9600,
     timeout=1
 )
@@ -78,14 +78,21 @@ scat3 = ax.scatter([], [], c='magenta', label='Object 3')
 scat_cursor = ax.scatter([], [], c='yellow', label='Cursor')
 ax.legend()
 
-data_points = {"obj0": (0, 0), "obj1": (0, 0), "obj2": (0, 0), "obj3": (0, 0)}
 
 #get numpy array of 2d points from objs in order 
 def get_points(objs):
+    '''
+    returns 4 np.array, each containing a coordinate, all in a one big np.array
+    Also implicitly converts each value to float?...
+    '''
     points = []
-    for i in range(len(objs)):
-        points.append(np.array([objs[f'obj{i}'][0], objs[f'obj{i}'][1]], dtype=np.float32))
-    return np.array(points)
+    try:
+        for i in range(len(objs)):
+            points.append(np.array([objs[i][0], objs[i][1]], dtype=np.float32))
+        return np.array(points)
+    except Exception as e:
+        print(e)
+        return np.array(points)
 
 def create_rect_pattern():
     '''
@@ -200,7 +207,7 @@ def get_cam_pose(points_pixart_2d, points_obj_3d, camera_matrix, dist_coeffs):
             points_pixart_2d, 
             camera_matrix, 
             dist_coeffs,
-            flags=cv.SOLVEPNP_IPPE
+            flags=cv.SOLVEPNP_EPNP
         )
         R, _ = cv.Rodrigues(rvec)
         R, tvec = ensure_positive_z(R, tvec)
@@ -235,10 +242,19 @@ def get_cam_pose(points_pixart_2d, points_obj_3d, camera_matrix, dist_coeffs):
     return recovered_pos
 
 
-def update():
-    res_b = ser.readline()
-    res = res_b.decode()
-    res = res.split(',')
+def update() -> list[tuple[int, int]]:
+    '''
+    returns 4 coordinate tuples in a list
+    '''
+    data = b''
+    while data != b'\n':
+        data = ser.read()
+    data = b''
+    while data[-1:] != b'\n':
+        data += ser.read()
+    ser.reset_input_buffer()
+    data = data.decode('utf-8').strip()
+    res = data.split(',')
     try:
         res = [int(coord.strip()) for coord in res]
         obj0 = (res[0], res[1])
@@ -246,7 +262,6 @@ def update():
         obj2 = (res[4], res[5])
         obj3 = (res[6], res[7])
         objs = [obj0, obj1, obj2, obj3]
-        print(objs)
         return objs
     except:
         pass
@@ -254,7 +269,6 @@ def update():
 
 def animate(frame):
     data = update()
-
     points_pixart_2d = get_points(data)
     # Get camera pose
     camera_pos = get_cam_pose(points_pixart_2d, points_obj_3d, camera_matrix, dist_coeffs)
@@ -268,7 +282,7 @@ def animate(frame):
     print("Cursor position:", cursor_x, cursor_y)
     print("Clipped:", clipped)
 
-    cursor = [cursor_x, cursor_y] 
+    cursor = [float(cursor_x), float(cursor_y)]
 
     if data is not None:
         # Update scatter plot positions
