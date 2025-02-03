@@ -4,7 +4,7 @@ from matplotlib.animation import FuncAnimation
 
 
 ser = serial.Serial(
-    port='COM3',
+    port='/dev/cu.usbserial-0001',
     baudrate=9600,
     timeout=1
 )
@@ -22,9 +22,10 @@ ax.set_ylabel('Y Position')
 scat0 = ax.scatter([], [], c='red', label='Object 0')
 scat1 = ax.scatter([], [], c='blue', label='Object 1')
 scat2 = ax.scatter([], [], c='green', label='Object 2')
+scat3 = ax.scatter([], [], c='magenta', label='Object 3')
 ax.legend()
 
-data_points = {"obj0": (0, 0), "obj1": (0, 0), "obj2": (0, 0)}
+data_points = {"obj0": (0, 0), "obj1": (0, 0), "obj2": (0, 0), "obj3": (0, 0)}
 
 def update():
     res_b = ser.readline()
@@ -35,7 +36,8 @@ def update():
         obj0 = (res[0], res[1])
         obj1 = (res[2], res[3])
         obj2 = (res[4], res[5])
-        objs = [obj0, obj1, obj2]
+        obj3 = (res[6], res[7])
+        objs = [obj0, obj1, obj2, obj3]
         print(objs)
         return objs
     except:
@@ -49,7 +51,8 @@ def animate(frame):
         scat0.set_offsets(data[0])
         scat1.set_offsets(data[1])
         scat2.set_offsets(data[2])
-    return scat0, scat1, scat2
+        scat3.set_offsets(data[3])
+    return scat0, scat1, scat2, scat3
 
 # Create animation
 anim = FuncAnimation(fig, animate, interval=1, blit=True)
