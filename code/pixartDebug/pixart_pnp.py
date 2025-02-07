@@ -14,6 +14,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
+offsetx = 4095/2
+offsety = 4095/2
+
 CURSOR_LIMIT_PERCENT = 200  # Cursor movement limit as percentage of pattern size (To be changed in the future, once occlusion and/or missing points are considered)
 
 #--- LED Object Parameters ---
@@ -24,17 +27,14 @@ obj_colors = [
     (0, 255, 0),  # green
     (255, 0, 255)  # magenta
 ]
-# Define object dimensions (in m)
-obj_width = 30e-3
-obj_height = 30e-3
 #--- End Object Parameters ---
 
 # --- Camera Parameters ---
 CONSIDER_DISTORTION = False
 
 # Define camera parameters (from PixArt PAJ7025R3 datasheet)
-f_eff = 0.378        # focal length (mm)
-pixel_size = 11e-3   # pixel size in mm
+f_eff = 0.378e-3        # focal length (mm)
+pixel_size = 11e-6   # pixel size in mm
 resolution = 98     # pixels (sensor is a square)
 
 # Create camera matrix (intrinsic parameters)
@@ -49,14 +49,18 @@ camera_matrix = np.array([
 #distortion defined as -30% in datasheet. OpenCV uses different model, so this part maty not be accurate
 if CONSIDER_DISTORTION:
     # -30% distortion, approximate by setting k1=-0.3 
-    dist_coeffs = np.array([[-0.3], [0], [0], [0]], dtype=np.float32)  # k1=-0.3, k2=0, p1=0, p2=0
+    dist_coeffs = np.array([[0.3], [0], [0], [0]], dtype=np.float32)  # k1=-0.3, k2=0, p1=0, p2=0
 else:
     dist_coeffs = np.zeros((4,1))
 #--- End Camera Parameters ---
 
 #init serial port
 ser = serial.Serial(
+<<<<<<< HEAD
     port='COM4', #/dev/cu.usbserial-0001', #Ryan: COM3, Luke: 
+=======
+    port='/dev/cu.usbserial-0001', #/dev/cu.usbxsserial-0001', #Ryan: COM3, Luke: 
+>>>>>>> 6adb2a6549c7daf039cf1683831cce8292b32a52
     baudrate=9600,
     timeout=1
 )
@@ -75,7 +79,7 @@ scat0 = ax.scatter([], [], c='red', label='Object 0')
 scat1 = ax.scatter([], [], c='blue', label='Object 1')
 scat2 = ax.scatter([], [], c='green', label='Object 2')
 scat3 = ax.scatter([], [], c='magenta', label='Object 3')
-scat_cursor = ax.scatter([], [], c='yellow', label='Cursor')
+scat_cursor = ax.scatter([], [], c='black', label='Cursor')
 ax.legend()
 
 
@@ -98,15 +102,16 @@ def create_rect_pattern():
     '''
     Creates a rect pattern with 4 points
     '''
-    rect_width = 62e-3 #LED object irl width
-    rect_height = 75e-3 #LED object irl height
+    rect_width = 70.5e-3 #LED object irl width
+    rect_height = 42.5e-3 #LED object irl height
 
     # rect points (z=0)
     points = np.array([
+        [-rect_width/2, rect_height/2, 0],    # Top left
+        [rect_width/2, rect_height/2, 0],    # Top right
         [-rect_width/2, -rect_height/2, 0],  # Bottom left
         [rect_width/2, -rect_height/2, 0],   # Bottom right
-        [rect_width/2, rect_height/2, 0],    # Top right
-        [-rect_width/2, rect_height/2, 0],    # Top left
+        
     ], dtype=np.float32)
 
     return points
@@ -136,16 +141,16 @@ def camera_to_screen(camera_pos, screen_width, screen_height):
     """
     # Define mapping range using percentage of pattern spacing (temporary fix for occlusion)
     limit = CURSOR_LIMIT_PERCENT  # Convert percentage to decimal
-    x_range = [-limit, limit]  # mm
-    y_range = [-limit, limit]  # mm
+    #x_range = [-limit, limit]  # mm
+   # y_range = [-limit, limit]  # mm
     
     # Clip camera position to range
-    x = np.clip(camera_pos[0], x_range[0], x_range[1])
-    y = np.clip(camera_pos[1], y_range[0], y_range[1])
+    x = camera_pos[0]
+    y = camera_pos[1]
     
     # Map to screen coordinates
-    screen_x = ((x - x_range[0]) / (x_range[1] - x_range[0])) * screen_width
-    screen_y = ((y - y_range[0]) / (y_range[1] - y_range[0])) * screen_height
+    screen_x = x * screen_width
+    screen_y = y * screen_height
     
     # Add text to indicate if position is clipped
     clipped = False
@@ -246,6 +251,10 @@ def update() -> list[tuple[int, int]]:
     '''
     returns 4 coordinate tuples in a list
     '''
+<<<<<<< HEAD
+=======
+
+>>>>>>> 6adb2a6549c7daf039cf1683831cce8292b32a52
     data = b''
     while data != b'\n':
         data = ser.read()
@@ -275,14 +284,18 @@ def animate(frame):
     print("Camera position:", camera_pos)
 
     #get cursor position
-    screen_width = 4095  # screen width in pixels
+    screen_width = 4095 # screen width in pixels
     screen_height = 4095  # screen height in pixels
 
     cursor_x, cursor_y, clipped = camera_to_screen(camera_pos, screen_width, screen_height)
     print("Cursor position:", cursor_x, cursor_y)
     print("Clipped:", clipped)
 
+<<<<<<< HEAD
     cursor = [float(cursor_x), float(cursor_y)]
+=======
+    cursor = [float(cursor_x)+offsetx, float(cursor_y)+offsety]
+>>>>>>> 6adb2a6549c7daf039cf1683831cce8292b32a52
 
     if data is not None:
         # Update scatter plot positions

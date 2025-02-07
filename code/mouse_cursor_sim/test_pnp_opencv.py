@@ -5,7 +5,7 @@ UFM (Unidentified Flying Mouse) - Group 10
 File Name         : test_pnp_opencv.py
 Originator        : L. West, westl5
 Purpose           : Test Code for Localization of User's Wrist in Space Using One PixArt PAJ7025R3
-Date Last Modified: 2024/Jan/03 by L. West
+Date Last Modified: 2024/Jan/14 by L. West
 '''
 
 import numpy as np
@@ -21,7 +21,7 @@ PATTERN_TYPE = 'rect'  # Options: 'rect' or 'six' or 'test_shape'
 
 BASE_DISTANCE = 100  # Distance between base LEDs in mm
 CURSOR_LIMIT_PERCENT = 200  # Cursor movement limit as percentage of pattern size (To be changed in the future, once occlusion and/or missing points are considered)
-NOISE_STDEV = 0.2  # Standard deviation of Gaussian noise added to 2D points
+NOISE_STDEV = 0.1 # Standard deviation of Gaussian noise added to 2D points
 
 # Define camera parameters (from PixArt PAJ7025R3 datasheet)
 f_eff = 0.378        # focal length (mm)
@@ -56,7 +56,7 @@ CAMERA_POSITIONS = {
 }
 
 # Select camera position (change this string to test different positions)
-position_type = 'far'  # Options: 'front', 'side', 'angle', 'high', 'close', 'far', 'offset'
+position_type = 'angle'  # Options: 'front', 'side', 'angle', 'high', 'close', 'far', 'offset'
 
 # Get camera position and target
 camera_pos, target_point = CAMERA_POSITIONS[position_type]
@@ -621,3 +621,4 @@ print(true_order)
 print(pre_fix_order)
 print(pnp_order)
 
+print(points_2d_true)
