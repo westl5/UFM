@@ -1,0 +1,41 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\RyanX\\Documents\\GitHub\\UFM\\code\\HostApp\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{6BBB9C8C-9EF4-446B-AE4F-32E83DDA5AE9}|HostApp.vcxproj|C:\\Users\\RyanX\\Documents\\GitHub\\UFM\\code\\HostApp\\monitor.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{6BBB9C8C-9EF4-446B-AE4F-32E83DDA5AE9}|HostApp.vcxproj|solutionrelative:monitor.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "monitor.cpp",
+              "DocumentMoniker": "C:\\Users\\RyanX\\Documents\\GitHub\\UFM\\code\\HostApp\\monitor.cpp",
+              "RelativeDocumentMoniker": "monitor.cpp",
+              "ToolTip": "C:\\Users\\RyanX\\Documents\\GitHub\\UFM\\code\\HostApp\\monitor.cpp",
+              "RelativeToolTip": "monitor.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-21T15:58:06.61Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
