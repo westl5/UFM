@@ -302,11 +302,12 @@ class IRSensor:
         res = data.split(',')
         try:
             res = [int(coord.strip()) for coord in res]
-            obj0 = (res[0], res[1])
-            obj1 = (res[2], res[3])
-            obj2 = (res[4], res[5])
-            obj3 = (res[6], res[7])
-            objs = [obj0, obj1, obj2, obj3]
+            objs = [
+                {'position': (res[0], res[1])},
+                {'position': (res[2], res[3])},
+                {'position': (res[4], res[5])},
+                {'position': (res[6], res[7])}
+            ]
             return objs
         except:
             pass
