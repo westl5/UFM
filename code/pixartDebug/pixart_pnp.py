@@ -9,10 +9,13 @@ Date Last Modified: 2024/Jan/14 by L. West
 '''
 
 import serial
+#import keyboard as kb
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import move_mouse as mm 
+import time
 
 offsetx = 4095/2
 offsety = 4095/2
@@ -35,7 +38,7 @@ CONSIDER_DISTORTION = False
 # Define camera parameters (from PixArt PAJ7025R3 datasheet)
 f_eff = 0.378e-3        # focal length (mm)
 pixel_size = 11e-6   # pixel size in mm
-resolution = 98     # pixels (sensor is a square)
+resolution = 4095 # pixels (sensor is a square)
 
 # Create camera matrix (intrinsic parameters)
 fx = fy = f_eff / pixel_size  # focal length in pixels
@@ -56,11 +59,7 @@ else:
 
 #init serial port
 ser = serial.Serial(
-<<<<<<< HEAD
-    port='COM4', #/dev/cu.usbserial-0001', #Ryan: COM3, Luke: 
-=======
     port='/dev/cu.usbserial-0001', #/dev/cu.usbxsserial-0001', #Ryan: COM3, Luke: 
->>>>>>> 6adb2a6549c7daf039cf1683831cce8292b32a52
     baudrate=9600,
     timeout=1
 )
@@ -247,14 +246,48 @@ def get_cam_pose(points_pixart_2d, points_obj_3d, camera_matrix, dist_coeffs):
     return recovered_pos
 
 
+def wii_method(points_2d):
+    """
+    Implements Wii-style cursor movement using IR dot positions
+    Args:
+        points_2d: List of (x,y) coordinates from IR sensor
+    Returns:
+        cursor_x, cursor_y: Normalized cursor position (-1 to 1)
+    """
+    try:
+        # Convert points to numpy array if not already
+        points = np.array(points_2d)
+        
+        # Calculate center point between all dots
+        center = np.mean(points, axis=0)
+        
+        # Calculate distance between furthest points (pattern width)
+        distances = []
+        for i in range(len(points)):
+            for j in range(i+1, len(points)):
+                dist = np.linalg.norm(points[i] - points[j])
+                distances.append(dist)
+        pattern_width = max(distances)
+        
+        # Normalize center position by pattern size
+        # Smaller pattern_width = further away = larger cursor movement
+        #scale_factor = (1 + pattern_width / resolution) if pattern_width > 0 else 1.0
+        
+        # Convert sensor coordinates to cursor coordinates
+        # Sensor coordinates: (0,0) at top-left
+        # Cursor coordinates: (-1,-1) at bottom-left, (1,1) at top-right
+        cursor_x = (center[0] - resolution/2) * 2 / resolution
+        cursor_y = (center[1] - resolution/2)*2 /resolution # Invert Y axis
+        return cursor_x, cursor_y
+        
+    except Exception as e:
+        print(f"Wii method calculation failed: {e}")
+        return 0, 0
+
 def update() -> list[tuple[int, int]]:
     '''
     returns 4 coordinate tuples in a list
     '''
-<<<<<<< HEAD
-=======
-
->>>>>>> 6adb2a6549c7daf039cf1683831cce8292b32a52
     data = b''
     while data != b'\n':
         data = ser.read()
@@ -275,7 +308,7 @@ def update() -> list[tuple[int, int]]:
     except:
         pass
 
-
+"""
 def animate(frame):
     data = update()
     points_pixart_2d = get_points(data)
@@ -291,11 +324,7 @@ def animate(frame):
     print("Cursor position:", cursor_x, cursor_y)
     print("Clipped:", clipped)
 
-<<<<<<< HEAD
-    cursor = [float(cursor_x), float(cursor_y)]
-=======
     cursor = [float(cursor_x)+offsetx, float(cursor_y)+offsety]
->>>>>>> 6adb2a6549c7daf039cf1683831cce8292b32a52
 
     if data is not None:
         # Update scatter plot positions
@@ -306,12 +335,65 @@ def animate(frame):
         scat_cursor.set_offsets(cursor)
 
     return scat0, scat1, scat2, scat3, scat_cursor
+"""
+
+# Update the animate function to use wii_method instead of PnP
+def animate(frame):
+    data = update()
+    if data is not None:
+        points_2d = get_points(data)
+        
+        # Get cursor position using Wii method
+        cursor_x, cursor_y = wii_method(points_2d)
+        
+        # Scale to screen coordinates
+        screen_y = (cursor_x + 1) * 4095/2 
+        screen_x = (cursor_y + 1) * 4095/2 
+        
+        cursor = [float(screen_x), float(screen_y)]
+        
+        # Update scatter plot positions
+        scat0.set_offsets(data[0])
+        scat1.set_offsets(data[1])
+        scat2.set_offsets(data[2])
+        scat3.set_offsets(data[3])
+        scat_cursor.set_offsets(cursor)
+        
+    return scat0, scat1, scat2, scat3, scat_cursor
 
 # Create pattern points
 points_obj_3d = create_rect_pattern()
 
 # Create animation
-anim = FuncAnimation(fig, animate, interval=1, blit=True)
+#anim = FuncAnimation(fig, animate, interval=1, blit=True)
 
 # Show the plot
-plt.show()
+#plt.show()
+
+
+# Example usage
+def main():
+    # Create controller
+    mouse = mm.MouseController()
+    while True:
+        
+        data = update()
+        if data is not None:
+
+            points_2d = get_points(data)
+                
+            # Get cursor position using Wii method
+            cursor_x, cursor_y = wii_method(points_2d)
+                
+            # Scale to screen coordinates
+            screen_x = (cursor_x) * 1920 
+            screen_y = (cursor_y) * 1080 
+            print(f"Cursor position: ({screen_x}, {screen_y})")
+            mouse.move_to(screen_x, screen_y)
+        
+        # Get current position
+        pos = mouse.get_position()
+        print(f"Final position: ({pos.x}, {pos.y})")
+
+if __name__ == "__main__":
+    main()
