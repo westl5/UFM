@@ -61,6 +61,19 @@ We are using this as a test to interface between the PixArt PAJ7025R3 Sensor and
    */
  
  static unsigned s_frame_period_micros;
+
+ // Structure to hold 2D point coordinates
+struct Point2D {
+  float x;
+  float y;
+};
+
+// Structure to hold 3D point coordinates
+struct Point3D {
+  float x;
+  float y;
+  float z;
+};
  
  struct PA_object
  {
@@ -492,6 +505,283 @@ We are using this as a test to interface between the PixArt PAJ7025R3 Sensor and
 // unsigned long current_time; //global variable
 // float offset_x, offset_y, offset_z;
 
+
+/**
+ * Normalizes a set of 2D points to improve numerical stability
+ * 
+ * @param points Input array of points
+ * @param normalizedPoints Output array of normalized points
+ * @param numPoints Number of points to normalize
+ * @param T Output 3x3 normalization transformation matrix
+ */
+void normalizePoints(Point2D points[], Point2D normalizedPoints[], int numPoints, float T[9]) {
+  // Calculate centroid
+  float meanX = 0, meanY = 0;
+  for (int i = 0; i < numPoints; i++) {
+    meanX += points[i].x;
+    meanY += points[i].y;
+  }
+  meanX /= numPoints;
+  meanY /= numPoints;
+  
+  // Calculate average distance from centroid
+  float avgDist = 0;
+  for (int i = 0; i < numPoints; i++) {
+    float dx = points[i].x - meanX;
+    float dy = points[i].y - meanY;
+    avgDist += sqrt(dx*dx + dy*dy);
+  }
+  avgDist /= numPoints;
+  
+  // Scale factor to make average distance sqrt(2)
+  float scale = sqrt(2) / avgDist;
+  
+  // Create normalization matrix
+  // T = [scale, 0, -scale*meanX; 0, scale, -scale*meanY; 0, 0, 1]
+  T[0] = scale;  T[1] = 0;      T[2] = -scale * meanX;
+  T[3] = 0;      T[4] = scale;  T[5] = -scale * meanY;
+  T[6] = 0;      T[7] = 0;      T[8] = 1;
+  
+  // Normalize points
+  for (int i = 0; i < numPoints; i++) {
+    normalizedPoints[i].x = scale * (points[i].x - meanX);
+    normalizedPoints[i].y = scale * (points[i].y - meanY);
+  }
+}
+
+/**
+ * Compute homography matrix using the direct four-point algorithm with normalization
+ * 
+ * @param srcPoints Source points (image points)
+ * @param dstPoints Destination points (world points)
+ * @param H Output 3x3 homography matrix
+ * @return True if successful, false otherwise
+ */
+bool computeHomographyFourPoint(Point2D srcPoints[4], Point2D dstPoints[4], float H[9]) {
+  // Normalize points for better numerical stability
+  Point2D normalizedSrc[4], normalizedDst[4];
+  float T_src[9], T_dst[9];
+  
+  normalizePoints(srcPoints, normalizedSrc, 4, T_src);
+  normalizePoints(dstPoints, normalizedDst, 4, T_dst);
+  
+  // For four points, we can directly solve the system of equations
+  // Each point correspondence gives us two equations
+  float A[8][8];
+  float b[8];
+  
+  for (int i = 0; i < 4; i++) {
+    float x = normalizedDst[i].x;
+    float y = normalizedDst[i].y;
+    float u = normalizedSrc[i].x;
+    float v = normalizedSrc[i].y;
+    
+    // Fill matrix A and vector b
+    int row1 = i * 2;
+    int row2 = i * 2 + 1;
+    
+    A[row1][0] = x;  A[row1][1] = y;  A[row1][2] = 1;  A[row1][3] = 0;
+    A[row1][4] = 0;  A[row1][5] = 0;  A[row1][6] = -x*u;  A[row1][7] = -y*u;
+    b[row1] = u;
+    
+    A[row2][0] = 0;  A[row2][1] = 0;  A[row2][2] = 0;  A[row2][3] = x;
+    A[row2][4] = y;  A[row2][5] = 1;  A[row2][6] = -x*v;  A[row2][7] = -y*v;
+    b[row2] = v;
+  }
+  
+  // Solve the system using Gaussian elimination
+  // We can use a simplified version since we know the system is well-conditioned due to normalization
+  
+  // Forward elimination (simplified due to normalization)
+  for (int i = 0; i < 8; i++) {
+    // Find maximum value in current column for pivot
+    float maxVal = abs(A[i][i]);
+    int maxIdx = i;
+    
+    for (int j = i + 1; j < 8; j++) {
+      if (abs(A[j][i]) > maxVal) {
+        maxVal = abs(A[j][i]);
+        maxIdx = j;
+      }
+    }
+    
+    // Check if matrix is singular
+    if (maxVal < 1e-10) {
+      return false; // Singular matrix, can't solve
+    }
+    
+    // Swap rows if necessary
+    if (maxIdx != i) {
+      for (int j = i; j < 8; j++) {
+        float temp = A[i][j];
+        A[i][j] = A[maxIdx][j];
+        A[maxIdx][j] = temp;
+      }
+      float temp = b[i];
+      b[i] = b[maxIdx];
+      b[maxIdx] = temp;
+    }
+    
+    // Eliminate below
+    for (int j = i + 1; j < 8; j++) {
+      float coef = A[j][i] / A[i][i];
+      for (int k = i; k < 8; k++) {
+        A[j][k] -= coef * A[i][k];
+      }
+      b[j] -= coef * b[i];
+    }
+  }
+  
+  // Back substitution
+  float x[8];
+  for (int i = 7; i >= 0; i--) {
+    x[i] = b[i];
+    for (int j = i + 1; j < 8; j++) {
+      x[i] -= A[i][j] * x[j];
+    }
+    x[i] /= A[i][i];
+  }
+  
+  // Fill the normalized homography matrix
+  float H_norm[9];
+  H_norm[0] = x[0]; H_norm[1] = x[1]; H_norm[2] = x[2];
+  H_norm[3] = x[3]; H_norm[4] = x[4]; H_norm[5] = x[5];
+  H_norm[6] = x[6]; H_norm[7] = x[7]; H_norm[8] = 1.0;
+  
+  // Denormalize: H = T_src^(-1) * H_norm * T_dst
+  // First compute T_src^(-1)
+  float T_src_inv[9];
+  float det = T_src[0] * T_src[4] - T_src[1] * T_src[3];
+  float invDet = 1.0f / det;
+  
+  T_src_inv[0] =  T_src[4] * invDet;
+  T_src_inv[1] = -T_src[1] * invDet;
+  T_src_inv[2] =  (T_src[1] * T_src[5] - T_src[2] * T_src[4]) * invDet;
+  T_src_inv[3] = -T_src[3] * invDet;
+  T_src_inv[4] =  T_src[0] * invDet;
+  T_src_inv[5] = -(T_src[0] * T_src[5] - T_src[2] * T_src[3]) * invDet;
+  T_src_inv[6] =  0;
+  T_src_inv[7] =  0;
+  T_src_inv[8] =  1;
+  
+  // Temporary result: H_temp = H_norm * T_dst
+  float H_temp[9];
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      H_temp[i*3 + j] = 0;
+      for (int k = 0; k < 3; k++) {
+        H_temp[i*3 + j] += H_norm[i*3 + k] * T_dst[k*3 + j];
+      }
+    }
+  }
+  
+  // Final result: H = T_src_inv * H_temp
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      H[i*3 + j] = 0;
+      for (int k = 0; k < 3; k++) {
+        H[i*3 + j] += T_src_inv[i*3 + k] * H_temp[k*3 + j];
+      }
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * Extracts the normal vector from the homography matrix
+ * 
+ * @param H 3x3 homography matrix (flattened to an array of 9 elements)
+ * @param normal Output normal vector (nx, ny, nz)
+ */
+void extractNormalFromHomography(float H[9], float normal[3]) {
+  // Extract two columns from H (these represent rotated coordinate axes)
+  float h1[3] = {H[0], H[3], H[6]};
+  float h2[3] = {H[1], H[4], H[7]};
+  
+  // Normalize vectors
+  float norm1 = sqrt(h1[0]*h1[0] + h1[1]*h1[1] + h1[2]*h1[2]);
+  float norm2 = sqrt(h2[0]*h2[0] + h2[1]*h2[1] + h2[2]*h2[2]);
+  
+  for (int i = 0; i < 3; i++) {
+    h1[i] /= norm1;
+    h2[i] /= norm2;
+  }
+  
+  // Cross product h1 × h2 gives the normal vector
+  normal[0] = h1[1]*h2[2] - h1[2]*h2[1];
+  normal[1] = h1[2]*h2[0] - h1[0]*h2[2];
+  normal[2] = h1[0]*h2[1] - h1[1]*h2[0];
+  
+  // Ensure normal points toward the camera (positive z)
+  if (normal[2] < 0) {
+    normal[0] = -normal[0];
+    normal[1] = -normal[1];
+    normal[2] = -normal[2];
+  }
+  
+  // Normalize
+  float norm = sqrt(normal[0]*normal[0] + normal[1]*normal[1] + normal[2]*normal[2]);
+  normal[0] /= norm;
+  normal[1] /= norm;
+  normal[2] /= norm;
+}
+
+/**
+ * Calculate orthogonal distance using the four-point homography algorithm
+ */
+float calculateOrthogonalDistance(Point2D imagePoints[4], float focalLength, 
+                                 float cx, float cy, float rectangleWidth, float rectangleHeight) {
+  
+  // Normalize image points by subtracting principal point and dividing by focal length
+  Point2D normalizedImagePoints[4];
+  for (int i = 0; i < 4; i++) {
+    normalizedImagePoints[i].x = (imagePoints[i].x - cx) / focalLength;
+    normalizedImagePoints[i].y = (imagePoints[i].y - cy) / focalLength;
+  }
+  
+  // Create world coordinates for rectangle corners (on the desk)
+  Point2D worldPoints[4] = {
+    {-rectangleWidth/2, -rectangleHeight/2}, // Top-left
+    {rectangleWidth/2, -rectangleHeight/2},  // Top-right
+    {rectangleWidth/2, rectangleHeight/2},   // Bottom-right
+    {-rectangleWidth/2, rectangleHeight/2}   // Bottom-left
+  };
+  
+  // Compute homography (from world to image)
+  float H[9];
+  bool success = computeHomographyFourPoint(normalizedImagePoints, worldPoints, H);
+  
+  if (!success) {
+    return -1; // Error case
+  }
+  
+  // Extract normal vector from homography
+  float normal[3];
+  extractNormalFromHomography(H, normal);
+  
+  // Calculate the direct distance to the rectangle center
+  // Extract scale information from the homography
+  float h1_norm = sqrt(H[0]*H[0] + H[3]*H[3] + H[6]*H[6]);
+  float h2_norm = sqrt(H[1]*H[1] + H[4]*H[4] + H[7]*H[7]);
+  float scale = (h1_norm + h2_norm) / 2.0;
+  
+  // The direct distance is the inverse of the scale
+  float direct_distance = 1.0 / scale;
+  
+  // Scale to match the physical dimensions
+  direct_distance *= rectangleWidth;
+  
+  // The orthogonal distance is the direct distance multiplied by the cosine of 
+  // the angle between the camera's optical axis and the desk normal
+  float cos_angle = normal[2]; // Dot product of (0,0,1) with normal
+  
+  // The orthogonal distance is the direct distance multiplied by the cosine of the angle
+  float orthogonal_distance = direct_distance * abs(cos_angle);
+  
+  return orthogonal_distance;
+}
+
 void setup() {
  
   Serial.begin(9600); //serial communication using UART through USB-C to get data from sensor (will be chanaged to bluetooth later)
@@ -528,6 +818,41 @@ void setup() {
 
   // bleMouse.begin(); // start ble work
 
+  // Example image points (in pixels)
+  Point2D imagePoints[4] = {
+    {260, 180}, // Top-left
+    {380, 190}, // Top-right
+    {370, 280}, // Bottom-right
+    {270, 270}  // Bottom-left
+  };
+  
+  // Camera parameters
+  float focalLength = 500.0; // in pixels
+  float cx = 320.0;          // principal point x
+  float cy = 240.0;          // principal point y
+  
+  // Rectangle dimensions
+  float rectangleWidth = 80.0;  // in mm
+  float rectangleHeight = 40.0; // in mm
+  
+  // Measure execution time
+  unsigned long startTime = micros();
+  
+  // Calculate orthogonal distance
+  float distance = calculateOrthogonalDistance(imagePoints, focalLength, cx, cy, 
+                                              rectangleWidth, rectangleHeight);
+  
+  unsigned long endTime = micros();
+  unsigned long executionTime = endTime - startTime;
+  
+  // Output results
+  Serial.print("Orthogonal distance: ");
+  Serial.print(distance);
+  Serial.println(" mm");
+  
+  Serial.print("Execution time: ");
+  Serial.print(executionTime);
+  Serial.println(" microseconds");
 
  }
  
