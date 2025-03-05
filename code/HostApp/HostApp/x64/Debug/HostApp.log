@@ -1,1 +1,6 @@
-﻿  HostApp.vcxproj -> C:\Users\RyanX\Documents\GitHub\UFM\code\HostApp\x64\Debug\HostApp.exe
+﻿  monitor.cpp
+C:\Users\RyanX\Documents\GitHub\UFM\code\HostApp\monitor.cpp(134,33): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\RyanX\Documents\GitHub\UFM\code\HostApp\monitor.cpp(135,33): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\RyanX\Documents\GitHub\UFM\code\HostApp\monitor.cpp(139,39): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\RyanX\Documents\GitHub\UFM\code\HostApp\monitor.cpp(139,32): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+  HostApp.vcxproj -> C:\Users\RyanX\Documents\GitHub\UFM\code\HostApp\x64\Debug\HostApp.exe
