@@ -36,9 +36,9 @@ obj_colors = [
 CONSIDER_DISTORTION = False
 
 # Define camera parameters (from PixArt PAJ7025R3 datasheet)
-f_eff = 0.378e-3        # focal length (mm)
-pixel_size = 11e-6   # pixel size in mm
-resolution = 4095 # pixels (sensor is a square)
+f_eff = 0.378        # focal length (mm)
+pixel_size = 11e-3   # pixel size in mm
+resolution = 98 # pixels (sensor is a square)
 
 # Create camera matrix (intrinsic parameters)
 fx = fy = f_eff / pixel_size  # focal length in pixels

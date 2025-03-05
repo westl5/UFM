@@ -19,8 +19,8 @@ class IRCursorController:
         self.prev_identified_points = None
         
         # Rectangle pattern dimensions 
-        self.rectangle_width = 70.5e-3  # Long side
-        self.rectangle_height = 42.5e-3 # Short side
+        self.rectangle_width = 70e-3  # Long side
+        self.rectangle_height = 40e-3 # Short side
         
         # Expected rectangular pattern (relative coordinates)
         self.reference_pattern = np.array([
