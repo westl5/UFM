@@ -1,2 +1,8 @@
-/code/HostApp/.vs
-/code/HostApp/HostApp
+**/code/HostApp/.vs/
+**/code/HostApp/Debug/
+**/code/HostApp/HostApp/
+**/code/HostApp/x64/
+code/HostApp/*.sln
+code/HostApp/*.vcxproj
+code/HostApp/*.filters
+code/HostApp/*.users
