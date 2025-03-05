@@ -827,9 +827,9 @@ void setup() {
   };
   
   // Camera parameters
-  float focalLength = 500.0; // in pixels
-  float cx = 320.0;          // principal point x
-  float cy = 240.0;          // principal point y
+  float focalLength = 0.378/0.011;; // in pixels
+  float cx = 49;          // principal point x (98/2)
+  float cy = 49;          // principal point y (98/2)
   
   // Rectangle dimensions
   float rectangleWidth = 80.0;  // in mm
