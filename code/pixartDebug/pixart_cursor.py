@@ -3,6 +3,7 @@ import serial
 import pyautogui
 import time
 from scipy.spatial import distance
+pyautogui.FAILSAFE = False
 
 class IRCursorController:
     def __init__(self, sensor_interface):
@@ -60,15 +61,12 @@ class IRCursorController:
         valid_points = []
         for point in points_data:
             x, y = point['position']
-            brightness = point['brightness']
-            area = point['area']
-            
-            if brightness > self.min_brightness and area > self.min_area:
-                valid_points.append((x, y))
-                
-                # Only need the first 4 points (our LEDs)
-                if len(valid_points) >= 4:
-                    break
+            # brightness = point['brightness']
+            # area = point['area']
+            valid_points.append((x, y))
+
+            if len(valid_points) >= 4:
+                break
         
         return valid_points
 
@@ -78,6 +76,7 @@ class IRCursorController:
         Returns a list of 4 side lengths in clockwise order
         """
         sides = []
+        print(f"side length func got input points {points}")
         # Assuming points are in order: top-left, top-right, bottom-right, bottom-left
         for i in range(4):
             next_i = (i + 1) % 4
@@ -91,6 +90,7 @@ class IRCursorController:
         Returns the points in order: top-left, top-right, bottom-right, bottom-left (clockwise)
         """
         if len(points) != 4:
+            print("hi")
             return None
         
         # Create all possible point orderings (24 permutations)
@@ -146,6 +146,8 @@ class IRCursorController:
             longer_side = max(sides[0], sides[1])
             shorter_side = min(sides[0], sides[1])
             self.last_aspect_ratio = longer_side / shorter_side
+
+        print(f"ur mom {best_ordering}")
         
         return np.array(best_ordering, dtype=np.float32) if best_ordering else None
 
@@ -274,7 +276,7 @@ class IRSensor:
     def __init__(self):
         #init serial port
         self.ser = serial.Serial(
-        port='/dev/cu.usbserial-0001', #Ryan: COM3, Luke:/dev/cu.usbserial-0001'
+        port='COM3', #Ryan: COM3, Luke:/dev/cu.usbserial-0001'
         baudrate=9600,
         timeout=1
         )
