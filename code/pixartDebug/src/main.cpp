@@ -481,7 +481,7 @@ void PA_init()
   //PA_set_sensor_gain(0x10, 0);
 
   PA_set_debug_image(DEBUG_IMAGE); //turn off debug image mode 
-  PA_print_settings(); //print settings to serial monitor
+  // PA_print_settings(); //print settings to serial monitor
   s_frame_period_micros = (unsigned) PA_get_frame_period_microseconds(); //get frame period in microseconds
 
   digitalWrite(SS, 1); //deassert chip select to end SPI transaction
@@ -500,33 +500,33 @@ void PA_init()
   //SPI.endTransaction();
 
   // Print detected objects from the first frame read
-  for (int i = 0; i < 16; i++)
-  {
-    Serial.print("Object ");
-    Serial.print(i, DEC);
-    Serial.print("\n");
-    Serial.print("--------");
-    Serial.print(i >= 10 ? "-\n" : "\n");
-    objs[i].print();
-  }
+  // for (int i = 0; i < 16; i++)
+  // {
+  //   Serial.print("Object ");
+  //   Serial.print(i, DEC);
+  //   Serial.print("\n");
+  //   Serial.print("--------");
+  //   Serial.print(i >= 10 ? "-\n" : "\n");
+  //   objs[i].print();
+  // }
 
   // Render image of detected objects in first frame
-  char *image = (char *) malloc((98 + 1) * 98 + 1);
-  memset(image, '.', 99 * 98);
-  for (int y = 0; y < 98; y++)
-  {
-    image[y * 99 + 98] = '\n';
-  }
-  image[99 * 98] = 0;
+  // char *image = (char *) malloc((98 + 1) * 98 + 1);
+  // memset(image, '.', 99 * 98);
+  // for (int y = 0; y < 98; y++)
+  // {
+  //   image[y * 99 + 98] = '\n';
+  // }
+  // image[99 * 98] = 0;
 
-  for (int i = 0; i < 16; i++)
-  {
-    char symbol = i < 10 ? ('0' + i) : ('a' + i - 10);
-    objs[i].render(image, 99, symbol);
-  }
-  Serial.print("Image:\n");
-  Serial.print(image);
-  free(image);
+  // for (int i = 0; i < 16; i++)
+  // {
+  //   char symbol = i < 10 ? ('0' + i) : ('a' + i - 10);
+  //   objs[i].render(image, 99, symbol);
+  // }
+  // Serial.print("Image:\n");
+  // Serial.print(image);
+  // free(image);
 }
 
 void setup() {
@@ -561,6 +561,7 @@ void loop() {
   char *ptr = buffer;
   ptr += sprintf(ptr, "%d, %d, %d, %d, %d, %d, %d, %d\n", objs[0].cx,objs[0].cy, objs[1].cx,objs[1].cy, objs[2].cx,objs[2].cy, objs[3].cx, objs[3].cy);
 
+  
   //int numObjects  = 3;
   /*
   for (int i = 0; i < numObjects; i++)
