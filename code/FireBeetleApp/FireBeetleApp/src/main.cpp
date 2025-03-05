@@ -7,10 +7,6 @@ https://github.com/trzy/PixArt
 
 We are using this as a test to interface between the PixArt PAJ7025R3 Sensor and the ESP-WROOM-32D board. 
 
-Extra commenting has also been added to explain register usage
-
-Our PCB is a different setup than trzy's. It does not contain capacitors (these are still in the circuit but not on the pcb),
-and has the following connections (these may be reduced in the future):
 
   +-------------------+
   |     PAJ7025R3     | 
@@ -31,66 +27,26 @@ and has the following connections (these may be reduced in the future):
     | | (BN) G8/VSYNCH
     | (VT) G6/FOD_TRIGGER
     (RD) VDDMA/VCC
-
-* Connections to ESP-WROOM-32D board headers:
  
-  VDDMA          -> 3v3   (recommend pin nearest GND)
-  G6/FOD_TRIGGER -> GPIO 01 
-  G8/VSYNCH      -> UNUSED
-  G9/CSB         -> GPIO 5
-  G10/SCK        -> GPIO 18
-  G11/MISO       -> GPIO 19
-  G12/MOSI       -> GPIO 23
+  VDDMA          -> 3v3
+  G9/CSB         ->
+  G10/SCK        ->
+  G11/MISO       ->
+  G12/MOSI       ->
   GND            -> GND
 
   IR LEDs: OSRAM SF 4356, 860nm wavelength, which is within the PixArt PAJ7025R3's detection range of 800-900nm 
 */
 
-
-/* ORIGINAL TRZY COMMENTING
- * Reads object data from PixArt sensor using Adafruit nRF52832 Feather.
- * PCB board connector J1 leads:
- *
- *  +--------------+
- *  |    PixArt    |
- *  |              |
- *  | C2        C1 |
- *  |              |
- *  | J1           |
- *  | -----------  |
- *  +-| | | | | |--+
- *    | | | | | |
- *    | | | | | |
- *    | | | | | |
- *    | | | | | GND
- *    | | | | G12/MOSI
- *    | | | |
- *    | | | G11/MISO
- *    | | |
- *    | | G10/SCK
- *    | |
- *    | G9/CSB
- *    |
- *    VDDMA
- *
- * Connections to nRF52832 board headers:
- *
- *    VDDMA    -> +3.3v (recommend pin nearest GND)
- *    G9/CSB   -> SS
- *    G10/SCK  -> SCK
- *    G11/MISO -> MISO (note MISO and MOSI ordering reversed from PixArt PCB)
- *    G12/MOSI -> MOSI
- *    GND      -> GND
- *
- * Vishay Semiconductors TSHA4400 IR LED (875nm) successfully detectable
- * by the PixArt sensor.
- */
-
  #include <cstdio>
  #include <cstring>
  #include <Arduino.h>
  #include <SPI.h> 
- 
+
+ #include <BleMouse.h>
+ #include <Adafruit_MPU6050.h>
+ #include <wire.h>
+
  #define SPI_CLK_SPEED 14000000 //14MHz is max value for PixArt sensor
  #define DEBUG_IMAGE 0x00
    /*
@@ -486,11 +442,11 @@ and has the following connections (these may be reduced in the future):
  
    digitalWrite(SS, 1); //deassert chip select to end SPI transaction
  
-   // Read first frame from sensor
-   for (int i = 0; i < 1; i++)
-   {
-     delayMicroseconds(s_frame_period_micros);
-   }
+  //  // Read first frame from sensor
+  //  for (int i = 0; i < 1; i++)
+  //  {
+  //    delayMicroseconds(s_frame_period_micros);
+  //  }
    digitalWrite(SS, 0); //CSB low to start SPI transaction
    PA_object objs[16]; //create object array to store object data
    PA_read_report(objs, 1); //read object data into object array
@@ -528,49 +484,102 @@ and has the following connections (these may be reduced in the future):
    // Serial.print(image);
    // free(image);
  }
+
+
+
+// BleMouse bleMouse; //create bleMouse object
+// Adafruit_MPU6050 mpu; //create mpu object
+// unsigned long current_time; //global variable
+// float offset_x, offset_y, offset_z;
+
+void setup() {
  
- void setup() {
+  Serial.begin(9600); //serial communication using UART through USB-C to get data from sensor (will be chanaged to bluetooth later)
+
+  pinMode(SS, OUTPUT); //chip select pin
+  digitalWrite(SS, 1); //deassert chip select to start
+  SPI.begin(); //init SPI communication
+  PA_init(); //initialize sensor
  
-   Serial.begin(9600); //serial communication using UART through USB-C to get data from sensor (will be chanaged to bluetooth later)
- 
-   pinMode(SS, OUTPUT); //chip select pin
-   digitalWrite(SS, 1); //deassert chip select to start
-   SPI.begin(); //init SPI communication
- 
-   PA_init(); //initialize sensor
- 
- 
-   //SPI.end();
- 
-   //digitalWrite(SS, 1);
-   //SPI.beginTransaction(SPISettings(14000000, LSBFIRST, SPI_MODE3));
+  // Wire.begin();  // Use default I2C bus (SDA = 21, SCL = 22 for ESP32)
+  // // Initialize MPU-6050 (IMU)
+  // if (!mpu.begin(0x68, &Wire)) {  // Default address for MPU-6050 is 0x68
+  //   Serial.println("Failed to find MPU-6050 chip!");
+  //   while (1); // Halt if initialization fails
+  // }
+  // Serial.println("MPU-6050 Initialized!");
+
+  // // Calibrate mpu
+  // float calx = 0.00;
+  // float caly = 0.00;
+  // float calz = 0.00;
+  // int samples = 500;
+  // for(int i = 0; i < samples; i++){
+  //   sensors_event_t a, g, temp;
+  //   mpu.getEvent(&a, &g, &temp); //read vals
+  //   calx += a.acceleration.x;
+  //   caly += a.acceleration.y;
+  //   calz += a.acceleration.z;
+  //   delay(2);
+  // }
+  // offset_x = calx/samples; //find avg
+  // offset_y = caly/samples;
+  // offset_z = calz/samples;
+
+  // bleMouse.begin(); // start ble work
+
+
  }
  
  void loop() {
  
-   // put your main code here, to run repeatedly
-   //Serial.print("Loop Start\n");
-   delayMicroseconds(s_frame_period_micros);
-   digitalWrite(SS, 0); //Assert CSB Low
-   //PA_print_settings();
-   PA_object objs[16]; //initialize objects array
-   PA_read_report(objs, 1);
-   digitalWrite(SS, 1);  // deasserting CS seems to be required for next frame readout
-   
-   char buffer[1024];
-   char *ptr = buffer;
-   ptr += sprintf(ptr, "%d, %d, %d, %d, %d, %d, %d, %d\n", objs[0].cx,objs[0].cy, objs[1].cx,objs[1].cy, objs[2].cx,objs[2].cy, objs[3].cx, objs[3].cy);
- 
-   //int numObjects  = 3;
-   /*
-   for (int i = 0; i < numObjects; i++)
-   {
-     ptr += sprintf(ptr, "Obj%d, %d, %d, %d\n", i, objs[i].cx, objs[i].cy, objs[i].area);
-   }
-   */
-   Serial.print(buffer);
-   
-   delay(17);
+  delayMicroseconds(s_frame_period_micros);
+  digitalWrite(SS, 0); //Assert CSB Low
+  PA_object objs[16]; //initialize objects array
+  PA_read_report(objs, 1); //read object data into objs array
+  digitalWrite(SS, 1);  // deasserting CS seems to be required for next frame readout
+  
+  char buffer[1024];
+  char *ptr = buffer;
+  ptr += sprintf(ptr, "%d, %d, %d, %d, %d, %d, %d, %d\n", objs[0].cx,objs[0].cy, objs[1].cx,objs[1].cy, objs[2].cx,objs[2].cy, objs[3].cx, objs[3].cy);
+  Serial.print(buffer);
+
+  // int x = objs[0].cx /4095.0 * 1920; //convert to screen coordinates
+  // int y = objs[0].cy /4095.0 * 1080;
+  // if(bleMouse.isConnected()) {
+  //   bleMouse.move(x,y,0,0);
+  // }
+
+  // /* Get new sensor events with the readings */
+  // sensors_event_t a, g, temp;
+  // mpu.getEvent(&a, &g, &temp);
+
+  // /* time step */
+  // unsigned long oldtime = current_time;
+  // unsigned long dt = (current_time - oldtime)/1000.00; //change to seconds
+  // current_time = millis();
+  
+  // /* get variables*/
+  // float acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z;
+
+  // acc_x = a.acceleration.x - offset_x; //Store Acceleration for each Axis
+  // acc_y = a.acceleration.y - offset_y;
+  // acc_z = a.acceleration.z;
+
+  // gyro_x = g.gyro.x; //Store Gyro Values
+  // gyro_y = g.gyro.y;
+  // gyro_z = g.gyro.z;
+
+  // /* pitch and roll */
+  // float roll_a, pitch_a;
+  // roll_a = atan2(acc_x,sqrt((acc_y*acc_y)+(acc_z*acc_z))) * 180/PI; //Roll Calc
+  // pitch_a = atan2(acc_y,sqrt((acc_x*acc_x)+(acc_z*acc_z))) * 180/PI; //Pitch Calc
+
+  // // Using Roll Angle for the clicking
+  // if ((roll_a > 30) && (roll_a < 45)){ // Left click (50 is good)
+  //   bleMouse.click(MOUSE_LEFT);
+  //   delay(1000);
+  // }
   
  }
  
