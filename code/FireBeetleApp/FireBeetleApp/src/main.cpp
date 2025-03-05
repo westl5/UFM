@@ -1,15 +1,15 @@
 /*
-EE40I6 Capstone Project - UFM - Group 10 
+EE40I6 Capstone Project - UFM - Group 10
 members: westl5, gillg62, xur76, yum77
 
 This code is based on code from Bart Trzynadlowski at the following link:
 https://github.com/trzy/PixArt
 
-We are using this as a test to interface between the PixArt PAJ7025R3 Sensor and the ESP-WROOM-32D board. 
+We are using this as a test to interface between the PixArt PAJ7025R3 Sensor and the ESP-32 board.
 
 
   +-------------------+
-  |     PAJ7025R3     | 
+  |     PAJ7025R3     |
   |                   |
   |      ooooooo      |
   |                   |
@@ -18,11 +18,11 @@ We are using this as a test to interface between the PixArt PAJ7025R3 Sensor and
   | o o o o o o o o o |
   +-|-|-|-|-|-|-|-|-|-+
     | | | | | | | | |
-    | | | | | | | | (OG) G13/LED_SIDE 
-    | | | | | | | (BK) GND 
-    | | | | | | (GN) G12/MOSI 
-    | | | | | (YE) G11/MISO 
-    | | | | (WH) G10/SCK 
+    | | | | | | | | (OG) G13/LED_SIDE
+    | | | | | | | (BK) GND
+    | | | | | | (GN) G12/MOSI
+    | | | | | (YE) G11/MISO
+    | | | | (WH) G10/SCK
     | | | (BL) G9/CSB
     | | (BN) G8/VSYNCH
     | (VT) G6/FOD_TRIGGER
