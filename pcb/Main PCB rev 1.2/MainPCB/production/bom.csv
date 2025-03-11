@@ -1,0 +1,8 @@
+﻿Designator,Footprint,Quantity,Value,LCSC Part #
+"_3, _2, ",,3,,
+BOTLEFT1,PinSocket_1x06_P2.54mm_Vertical_SMD_Pin1Left,1,Conn_01x06,
+FCC1,CONN_XF3M-0615-1B_OMR,1,Conn_01x06,
+MDVRCONN1,PinHeader_1x05_P2.54mm_Vertical,1,Conn_01x04,
+MPUCONN1,PinHeader_1x08_P2.54mm_Vertical,1,Conn_01x04,
+RIGHTSIDE1,PinSocket_1x14_P2.54mm_Vertical_SMD_Pin1Right,1,Conn_01x14,
+TOPLEFT1,PinSocket_1x08_P2.54mm_Vertical_SMD_Pin1Left,1,Conn_01x08,
