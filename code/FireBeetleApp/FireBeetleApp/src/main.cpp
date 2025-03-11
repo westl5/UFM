@@ -498,14 +498,6 @@ struct Point3D {
    // free(image);
  }
 
-
-
-// BleMouse bleMouse; //create bleMouse object
-// Adafruit_MPU6050 mpu; //create mpu object
-// unsigned long current_time; //global variable
-// float offset_x, offset_y, offset_z;
-
-
 /**
  * Normalizes a set of 2D points to improve numerical stability
  * 
@@ -782,15 +774,28 @@ float calculateOrthogonalDistance(Point2D imagePoints[4], float focalLength,
   return orthogonal_distance;
 }
 
+
+
+// Adafruit_MPU6050 mpu; //create mpu object
+// unsigned long current_time; //global variable
+// float offset_x, offset_y, offset_z;
+
 void setup() {
+  // BleMouse bleMouse; //create bleMouse object
+
  
-  Serial.begin(9600); //serial communication using UART through USB-C to get data from sensor (will be chanaged to bluetooth later)
+  Serial.begin(9600); //Use this connection to print debug info to serial monitor
 
   pinMode(SS, OUTPUT); //chip select pin
   digitalWrite(SS, 1); //deassert chip select to start
   SPI.begin(); //init SPI communication
   PA_init(); //initialize sensor
  
+
+  // bleMouse.begin(); // start ble work
+
+
+
   // Wire.begin();  // Use default I2C bus (SDA = 21, SCL = 22 for ESP32)
   // // Initialize MPU-6050 (IMU)
   // if (!mpu.begin(0x68, &Wire)) {  // Default address for MPU-6050 is 0x68
@@ -816,43 +821,43 @@ void setup() {
   // offset_y = caly/samples;
   // offset_z = calz/samples;
 
-  // bleMouse.begin(); // start ble work
+
 
   // Example image points (in pixels)
-  Point2D imagePoints[4] = {
-    {260, 180}, // Top-left
-    {380, 190}, // Top-right
-    {370, 280}, // Bottom-right
-    {270, 270}  // Bottom-left
-  };
+  // Point2D imagePoints[4] = {
+  //   {260, 180}, // Top-left
+  //   {380, 190}, // Top-right
+  //   {370, 280}, // Bottom-right
+  //   {270, 270}  // Bottom-left
+  // };
   
   // Camera parameters
-  float focalLength = 500.0; // in pixels
-  float cx = 320.0;          // principal point x
-  float cy = 240.0;          // principal point y
+  // float focalLength = 500.0; // in pixels
+  // float cx = 320.0;          // principal point x
+  // float cy = 240.0;          // principal point y
   
-  // Rectangle dimensions
-  float rectangleWidth = 80.0;  // in mm
-  float rectangleHeight = 40.0; // in mm
+  // // Rectangle dimensions
+  // float rectangleWidth = 80.0;  // in mm
+  // float rectangleHeight = 40.0; // in mm
   
-  // Measure execution time
-  unsigned long startTime = micros();
+  // // Measure execution time
+  // unsigned long startTime = micros();
   
-  // Calculate orthogonal distance
-  float distance = calculateOrthogonalDistance(imagePoints, focalLength, cx, cy, 
-                                              rectangleWidth, rectangleHeight);
+  // // Calculate orthogonal distance
+  // float distance = calculateOrthogonalDistance(imagePoints, focalLength, cx, cy, 
+  //                                             rectangleWidth, rectangleHeight);
   
-  unsigned long endTime = micros();
-  unsigned long executionTime = endTime - startTime;
+  // unsigned long endTime = micros();
+  // unsigned long executionTime = endTime - startTime;
   
-  // Output results
-  Serial.print("Orthogonal distance: ");
-  Serial.print(distance);
-  Serial.println(" mm");
+  // // Output results
+  // Serial.print("Orthogonal distance: ");
+  // Serial.print(distance);
+  // Serial.println(" mm");
   
-  Serial.print("Execution time: ");
-  Serial.print(executionTime);
-  Serial.println(" microseconds");
+  // Serial.print("Execution time: ");
+  // Serial.print(executionTime);
+  // Serial.println(" microseconds");
 
  }
  
