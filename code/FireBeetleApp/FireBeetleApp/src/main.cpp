@@ -510,10 +510,6 @@ void setup() {
   PA_read_report(objs, 1); //read object data into objs array
   digitalWrite(SS, 1);  // deasserting CS seems to be required for next frame readout
   
-  char buffer[1024];
-  char *ptr = buffer;
-  ptr += sprintf(ptr, "%d, %d, %d, %d, %d, %d, %d, %d\n", objs[0].cx,objs[0].cy, objs[1].cx,objs[1].cy, objs[2].cx,objs[2].cy, objs[3].cx, objs[3].cy);
-  Serial.print(buffer);
 
   int x1, x2, x3, x4, y1, y2, y3, y4;
   x1 = objs[0].cx /4095.0 * 1920; //convert to screen coordinates
@@ -530,8 +526,15 @@ void setup() {
   // Serial.print(x, DEC);Serial.print(",");Serial.print(y, DEC);Serial.print("\n");
 
   if(bleMouse.isConnected()) {
-    Serial.println("Connected");
+    Serial.println(x, DEC);
+    Serial.println(y, DEC);
     bleMouse.move(x,y,0,0);
+  }
+  else {
+    char buffer[1024];
+    char *ptr = buffer;
+    ptr += sprintf(ptr, "%d, %d, %d, %d, %d, %d, %d, %d\n", objs[0].cx,objs[0].cy, objs[1].cx,objs[1].cy, objs[2].cx,objs[2].cy, objs[3].cx, objs[3].cy);
+    Serial.print(buffer);
   }
 
   delay(16); // delay for 16ms to maintain 60fps
