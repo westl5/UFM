@@ -76,7 +76,7 @@ class IRCursorController:
         Returns a list of 4 side lengths in clockwise order
         """
         sides = []
-        print(f"side length func got input points {points}")
+        # print(f"side length func got input points {points}")
         # Assuming points are in order: top-left, top-right, bottom-right, bottom-left
         for i in range(4):
             next_i = (i + 1) % 4
