@@ -500,7 +500,13 @@ void setup() {
 
   bleMouse.begin();
 
+
+
  }
+ 
+ int last_x_pos =0;
+ int last_y_pos =0;
+ int sensitivity = 3.0;
  
  void loop() {
  
@@ -511,24 +517,52 @@ void setup() {
   digitalWrite(SS, 1);  // deasserting CS seems to be required for next frame readout
   
 
-  int x1, x2, x3, x4, y1, y2, y3, y4;
-  x1 = objs[0].cx /4095.0 * 1920; //convert to screen coordinates
-  y1 = objs[0].cy /4095.0 * 1080;
-  x2 = objs[1].cx /4095.0 * 1920;
-  y2 = objs[1].cy /4095.0 * 1080;
-  x3 = objs[2].cx /4095.0 * 1920;
-  y3 = objs[2].cy /4095.0 * 1080;
-  x4 = objs[3].cx /4095.0 * 1920;
-  y4 = objs[3].cy /4095.0 * 1080;
+  int res_x = 1920;
+  int res_y = 1080;
 
-  int x = (x1 + x2 + x3 + x4) / 4; //average x coordinate of all objects
-  int y = (y1 + y2 + y3 + y4) / 4; //average y coordinate of all objects
+  int x1, x2, x3, x4, y1, y2, y3, y4;
+  x1 = objs[0].cx /4095.0 * res_x; //convert to screen coordinates
+  y1 = (4095 - objs[0].cy) /4095.0 * res_y;
+  // x2 = objs[1].cx /4095.0 * res_x;
+  // y2 = (4095 - objs[1].cy) /4095.0 * res_y;
+  // x3 = objs[2].cx /4095.0 * res_x;
+  // y3 = (4095 - objs[2].cy) /4095.0 * res_y;
+  // x4 = objs[3].cx /4095.0 * res_x;
+  // y4 = (4095 - objs[3].cy) /4095.0 * res_y;
+
+  int x,y;
+  x = x1;
+  y = y1;
+
+  int dx = (x - last_x_pos) * sensitivity;
+  int dy = (y - last_y_pos) * sensitivity;
+
+  last_x_pos = x;
+  last_y_pos = y;
+
+  // if(x2 > 4094.0){
+  //   x = x1; 
+  //   y = y1;
+  // }
+  // else if (x3 > 4095.0){
+  //   x = (x1 + x2) / 2;
+  //   y = (y1 + y2) / 2;
+  // }
+  // else if (x4 > 4095.0){
+  //   x = (x1 + x2 + x3) / 3;
+  //   y = (y1 + y2 + y3) / 3;
+  // }
+  // else{
+  //   x = (x1 + x2 + x3 + x4) / 4;
+  //   y = (y1 + y2 + y3 + y4) / 4;
+  // }
+  
+
   // Serial.print(x, DEC);Serial.print(",");Serial.print(y, DEC);Serial.print("\n");
 
   if(bleMouse.isConnected()) {
     Serial.println(x, DEC);
-    Serial.println(y, DEC);
-    bleMouse.move(x,y,0,0);
+    bleMouse.move(dx,dy,0,0);
   }
   else {
     char buffer[1024];
@@ -537,7 +571,7 @@ void setup() {
     Serial.print(buffer);
   }
 
-  delay(16); // delay for 16ms to maintain 60fps
+  delay(8);
   
  }
  
