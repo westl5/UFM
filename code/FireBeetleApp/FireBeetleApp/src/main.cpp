@@ -500,13 +500,16 @@ void setup() {
 
   bleMouse.begin();
 
-
-
  }
  
+ int res_x = 1920;
+ int res_y = 1080;
+
  int last_x_pos =0;
  int last_y_pos =0;
- int sensitivity = 3.0;
+ int static_cursor_frame_count = 0;
+
+ int sensitivity = 1.0;
  
  void loop() {
  
@@ -515,54 +518,36 @@ void setup() {
   PA_object objs[16]; //initialize objects array
   PA_read_report(objs, 1); //read object data into objs array
   digitalWrite(SS, 1);  // deasserting CS seems to be required for next frame readout
+
+  int x, y;
+  y = objs[0].cx /4095.0 * res_x; // convert to screen coordinates
+  x = objs[0].cy /4095.0 * res_y;
+
+  int dx = (x - last_x_pos);
+  int dy = (y - last_y_pos);
+  int x_move = dx * sensitivity;
+  int y_move = dy * sensitivity;
+
+  if(std::abs(x - last_x_pos)<10){
+    Serial.println(static_cursor_frame_count);
+    static_cursor_frame_count++;
+  }
+  else{
+    static_cursor_frame_count = 0;
+  }
+
+  if(static_cursor_frame_count >= 100){
+    Serial.println("hiiiiiiiiiiiiiiiiiiiiiiiiii");
+    static_cursor_frame_count = 0;
+    delay(1000);
+    }
   
-
-  int res_x = 1920;
-  int res_y = 1080;
-
-  int x1, x2, x3, x4, y1, y2, y3, y4;
-  x1 = objs[0].cx /4095.0 * res_x; //convert to screen coordinates
-  y1 = (4095 - objs[0].cy) /4095.0 * res_y;
-  // x2 = objs[1].cx /4095.0 * res_x;
-  // y2 = (4095 - objs[1].cy) /4095.0 * res_y;
-  // x3 = objs[2].cx /4095.0 * res_x;
-  // y3 = (4095 - objs[2].cy) /4095.0 * res_y;
-  // x4 = objs[3].cx /4095.0 * res_x;
-  // y4 = (4095 - objs[3].cy) /4095.0 * res_y;
-
-  int x,y;
-  x = x1;
-  y = y1;
-
-  int dx = (x - last_x_pos) * sensitivity;
-  int dy = (y - last_y_pos) * sensitivity;
-
   last_x_pos = x;
   last_y_pos = y;
-
-  // if(x2 > 4094.0){
-  //   x = x1; 
-  //   y = y1;
-  // }
-  // else if (x3 > 4095.0){
-  //   x = (x1 + x2) / 2;
-  //   y = (y1 + y2) / 2;
-  // }
-  // else if (x4 > 4095.0){
-  //   x = (x1 + x2 + x3) / 3;
-  //   y = (y1 + y2 + y3) / 3;
-  // }
-  // else{
-  //   x = (x1 + x2 + x3 + x4) / 4;
-  //   y = (y1 + y2 + y3 + y4) / 4;
-  // }
   
-
-  // Serial.print(x, DEC);Serial.print(",");Serial.print(y, DEC);Serial.print("\n");
-
   if(bleMouse.isConnected()) {
-    Serial.println(x, DEC);
-    bleMouse.move(dx,dy,0,0);
+    // Serial.println(x, DEC);
+    bleMouse.move(x_move,y_move,0,0);
   }
   else {
     char buffer[1024];
