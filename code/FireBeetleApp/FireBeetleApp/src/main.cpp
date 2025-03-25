@@ -46,6 +46,7 @@ We are using this as a test to interface between the PixArt PAJ7025R3 Sensor and
  #include <BleMouse.h>
  #include <Adafruit_MPU6050.h>
  #include <wire.h>
+ #include <Adafruit_DRV2605.h>
 
  BleMouse bleMouse("UFM-01"); //create bleMouse object
  Adafruit_MPU6050 mpu;
@@ -508,11 +509,7 @@ bool click_mode = false;
 
 int sensitivity = 1.0;
 
-uint8_t frametime = 8;
-
-// float delay_seconds{
-//   return
-// }
+uint8_t frametime = 12;
 
 float offset_x, offset_y, offset_z; // for mpu
 void calibrate(){ //Calibrates IMU
@@ -556,6 +553,16 @@ void setup() {
   }
   Serial.println("MPU-6050 Initialized!");
   calibrate();
+
+  // Initialize DRV2605L (Vibration Motor)
+  if (!drv.begin()) {  // Default address for DRV2605L is 0x5A
+    Serial.println("Failed to find DRV2605L chip!");
+    while (1); // Halt if initialization fails
+  }
+  Serial.println("DRV2605L Initialized!");
+  // Configure DRV2605L
+  drv.selectLibrary(1); // Select library 1 (basic vibration effects)
+  drv.setMode(DRV2605_MODE_INTTRIG); // Internal trigger mode for vibration motor
  }
  
 void loop() {
@@ -586,20 +593,24 @@ void loop() {
     if ((pitch_a > 30) && (pitch_a < 45)){ // Left click (50 is good)
       Serial.println("left clicked");
       //bleMouse.click(MOUSE_LEFT);
-      // drv.setWaveform(0, 17); // Effect 17
-      // drv.setWaveform(1, 0); // End waveform
-      // drv.go();
-      //drv.setWaveform(0,0); //Stops Vibration
+
+      drv.setWaveform(1, 4);  // strong click 100%, see datasheet part 11.2
+      drv.setWaveform(2, 0);  // end of waveforms
+      drv.go();
+      // drv.setWaveform(0,0); //Stops Vibration
+
       click_mode = false;
       click_mode_frame_count = 0;
     }
     if ((pitch_a < -30) && (pitch_a > -45)){ //Right click (-50 is good)
       Serial.println("right clicked");
       //bleMouse.click(MOUSE_RIGHT);
-      // drv.setWaveform(0, 17); // Effect 17 Strong Click 1 - 100 Percent
-      // drv.setWaveform(1, 0); // End waveform
-      // drv.go();      
-      //drv.setWaveform(0,0); //Stops Vibration
+
+      drv.setWaveform(1, 4);  // strong click 100%, see datasheet part 11.2
+      drv.setWaveform(2, 0);  // end of waveforms
+      drv.go();
+      // drv.setWaveform(0,0); //Stops Vibration
+
       click_mode = false;
       click_mode_frame_count = 0;
     }
@@ -660,10 +671,14 @@ void loop() {
       click_mode = true;
       Serial.println("entering click mode");
       static_cursor_frame_count = 0; // reset static cursor counter
+
+      drv.setWaveform(1, 34);  // strong click 100%, see datasheet part 11.2
+      drv.setWaveform(2, 0);  // end of waveforms
+      drv.go();
     }
   }
 
-  delay(12);
+  delay(frametime);
   
  }
  
