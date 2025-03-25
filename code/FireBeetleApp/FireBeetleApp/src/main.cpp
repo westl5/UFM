@@ -47,8 +47,10 @@ We are using this as a test to interface between the PixArt PAJ7025R3 Sensor and
  #include <Adafruit_MPU6050.h>
  #include <wire.h>
 
- BleMouse bleMouse("JOM AND TERRY"); //create bleMouse object
+ BleMouse bleMouse("UFM-01"); //create bleMouse object
  Adafruit_MPU6050 mpu;
+ Adafruit_DRV2605 drv;
+
 
 
 
@@ -506,6 +508,11 @@ bool click_mode = false;
 
 int sensitivity = 1.0;
 
+uint8_t frametime = 8;
+
+// float delay_seconds{
+//   return
+// }
 
 float offset_x, offset_y, offset_z; // for mpu
 void calibrate(){ //Calibrates IMU
@@ -552,6 +559,7 @@ void setup() {
  }
  
 void loop() {
+
   /* CLICK MODE*/
   if(click_mode == true){
     /* Get new IMU events with the readings */
@@ -561,8 +569,8 @@ void loop() {
     /* IMU variables */
     int calx, caly, calz;
     float acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z;
-    acc_x = a.acceleration.x - offset_x; //Store Acceleration for each Axis
-    acc_y = a.acceleration.y - offset_y;
+    acc_x = a.acceleration.x - 0; //Store Acceleration for each Axis
+    acc_y = a.acceleration.y - 0;
     acc_z = a.acceleration.z;
     gyro_x = g.gyro.x; //Store Gyro Values
     gyro_y = g.gyro.y;
@@ -573,35 +581,40 @@ void loop() {
     roll_a = atan2(acc_x,sqrt((acc_y*acc_y)+(acc_z*acc_z))) * 180/PI; //Roll Calc
     pitch_a = atan2(acc_y,sqrt((acc_x*acc_x)+(acc_z*acc_z))) * 180/PI; //Pitch Calc
 
+    Serial.println(pitch_a);
     /* check for clicks*/
-    if ((roll_a > 30) && (roll_a < 45)){ // Left click (50 is good)
+    if ((pitch_a > 30) && (pitch_a < 45)){ // Left click (50 is good)
       Serial.println("left clicked");
-      bleMouse.click(MOUSE_LEFT);
+      //bleMouse.click(MOUSE_LEFT);
       // drv.setWaveform(0, 17); // Effect 17
       // drv.setWaveform(1, 0); // End waveform
       // drv.go();
       //drv.setWaveform(0,0); //Stops Vibration
       click_mode = false;
+      click_mode_frame_count = 0;
     }
-    if ((roll_a < -30) && (roll_a > -45)){ //Right click (-50 is good)
+    if ((pitch_a < -30) && (pitch_a > -45)){ //Right click (-50 is good)
       Serial.println("right clicked");
-      bleMouse.click(MOUSE_RIGHT);
+      //bleMouse.click(MOUSE_RIGHT);
       // drv.setWaveform(0, 17); // Effect 17 Strong Click 1 - 100 Percent
       // drv.setWaveform(1, 0); // End waveform
       // drv.go();      
       //drv.setWaveform(0,0); //Stops Vibration
       click_mode = false;
+      click_mode_frame_count = 0;
     }
 
     click_mode_frame_count++;
-    if(click_mode_frame_count >= 2000){
+    if(click_mode_frame_count >= 250){
       Serial.println("No input detected, going back to cursor mode");
       click_mode = false;
+      click_mode_frame_count = 0;
     }
   }
 
-  /* CURSOR MODE*/
-  else{
+ 
+  else{ /* CURSOR MODE*/
+
     /* PA sensor reading */
     delayMicroseconds(s_frame_period_micros);
     digitalWrite(SS, 0); //Assert CSB Low
@@ -609,10 +622,19 @@ void loop() {
     PA_read_report(objs, 1); //read object data into objs array
     digitalWrite(SS, 1);  // deasserting CS seems to be required for next frame readout
 
+    /* check if ble connected*/
+    if(!bleMouse.isConnected()) {  
+      char buffer[128];
+      char *ptr = buffer;
+      ptr += sprintf(ptr, "%d, %d\n", objs[0].cx,objs[0].cy);
+      Serial.print(buffer);
+      return;
+    }
+
     /* screen space conversions */
     int x, y;
-    y = objs[0].cx /4095.0 * res_x; // convert to screen coordinates
-    x = objs[0].cy /4095.0 * res_y;
+    y = (4095 - objs[0].cx) /4095.0 * res_x; // convert to screen coordinates
+    x = (4095 - objs[0].cy) /4095.0 * res_y;
     int dx = (x - last_x_pos); // possibly useful for other things?..
     int dy = (y - last_y_pos);
     int x_move = dx * sensitivity; // use these to move mouse
@@ -625,34 +647,23 @@ void loop() {
     else{
       static_cursor_frame_count = 0;
     }
+    // set last pos as current pos
+    last_x_pos = x;
+    last_y_pos = y;
+
+    // move mouse, print sensor data if not connected to ble
+    // Serial.println(x, DEC);
+    bleMouse.move(x_move,y_move,0,0);
 
     // enter click mode here
     if(static_cursor_frame_count >= 125){
       click_mode = true;
       Serial.println("entering click mode");
       static_cursor_frame_count = 0; // reset static cursor counter
-      delay(1000);
-    }
-
-    // set last pos as current pos
-    last_x_pos = x;
-    last_y_pos = y;
-
-    // move mouse, print sensor data if not connected to ble
-    if(bleMouse.isConnected()) {
-      // Serial.println(x, DEC);
-      bleMouse.move(x_move,y_move,0,0);
-    }
-    else {
-      char buffer[128];
-      char *ptr = buffer;
-      ptr += sprintf(ptr, "%d, %d\n", objs[0].cx,objs[0].cy);
-      Serial.print(buffer);
     }
   }
 
-
-  delay(8);
+  delay(12);
   
  }
  
