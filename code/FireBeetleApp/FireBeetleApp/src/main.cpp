@@ -48,6 +48,8 @@ We are using this as a test to interface between the PixArt PAJ7025R3 Sensor and
  #include <wire.h>
 
  BleMouse bleMouse("JOM AND TERRY"); //create bleMouse object
+ Adafruit_MPU6050 mpu;
+
 
 
  #define SPI_CLK_SPEED 14000000 //14MHz is max value for PixArt sensor
@@ -488,9 +490,48 @@ We are using this as a test to interface between the PixArt PAJ7025R3 Sensor and
  }
 
 
-void setup() {
- 
 
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// MAIN
+// ------------------------------------------------------------------------------------------------------------------------------------
+int res_x = 1920;
+int res_y = 1080;
+
+int last_x_pos =0;
+int last_y_pos =0;
+int static_cursor_frame_count = 0;
+int click_mode_frame_count = 0;
+bool click_mode = false;
+
+int sensitivity = 1.0;
+
+
+float offset_x, offset_y, offset_z; // for mpu
+void calibrate(){ //Calibrates IMU
+  // Variables to accumulate sensor readings during calibration
+  float calx, caly, calz;
+  calx = 0.00;
+  caly = 0.00;
+  calz = 0.00;
+  int samples = 500;
+  // Collect 'samples' number of readings from the sensor
+  for(int i = 0; i < samples; i++){
+    sensors_event_t a, g, temp;
+    mpu.getEvent(&a, &g, &temp); //read vals
+    // Sum up the acceleration values for averaging
+    calx += a.acceleration.x;
+    caly += a.acceleration.y;
+    calz += a.acceleration.z;
+    }
+  // Compute the average acceleration values
+  offset_x = calx/samples;
+  offset_y = caly/samples;
+  offset_z = calz/samples;
+  Serial.println("Done Calibrating");
+}
+
+void setup() {
   Serial.begin(9600); //serial communication using UART through USB-C to get data from sensor (will be chanaged to bluetooth later)
 
   pinMode(SS, OUTPUT); //chip select pin
@@ -498,63 +539,118 @@ void setup() {
   SPI.begin(); //init SPI communication
   PA_init(); //initialize sensor
 
-  bleMouse.begin();
+  bleMouse.begin(); // start ble momuse
 
+  Wire.begin();  // Use default I2C bus (SDA = 21, SCL = 22 for ESP32)
+  // Initialize MPU-6050 (IMU)
+  if (!mpu.begin(0x68, &Wire)) {  // Default address for MPU-6050 is 0x68
+    Serial.println("Failed to find MPU-6050 chip!");
+    while (1); // Halt if initialization fails
+  }
+  Serial.println("MPU-6050 Initialized!");
+  calibrate();
  }
  
- int res_x = 1920;
- int res_y = 1080;
+void loop() {
+  /* CLICK MODE*/
+  if(click_mode == true){
+    /* Get new IMU events with the readings */
+    sensors_event_t a, g, temp;
+    mpu.getEvent(&a, &g, &temp);
 
- int last_x_pos =0;
- int last_y_pos =0;
- int static_cursor_frame_count = 0;
+    /* IMU variables */
+    int calx, caly, calz;
+    float acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z;
+    acc_x = a.acceleration.x - offset_x; //Store Acceleration for each Axis
+    acc_y = a.acceleration.y - offset_y;
+    acc_z = a.acceleration.z;
+    gyro_x = g.gyro.x; //Store Gyro Values
+    gyro_y = g.gyro.y;
+    gyro_z = g.gyro.z;
+    
+    /* pitch and roll */
+    float roll_a, pitch_a;
+    roll_a = atan2(acc_x,sqrt((acc_y*acc_y)+(acc_z*acc_z))) * 180/PI; //Roll Calc
+    pitch_a = atan2(acc_y,sqrt((acc_x*acc_x)+(acc_z*acc_z))) * 180/PI; //Pitch Calc
 
- int sensitivity = 1.0;
- 
- void loop() {
- 
-  delayMicroseconds(s_frame_period_micros);
-  digitalWrite(SS, 0); //Assert CSB Low
-  PA_object objs[16]; //initialize objects array
-  PA_read_report(objs, 1); //read object data into objs array
-  digitalWrite(SS, 1);  // deasserting CS seems to be required for next frame readout
-
-  int x, y;
-  y = objs[0].cx /4095.0 * res_x; // convert to screen coordinates
-  x = objs[0].cy /4095.0 * res_y;
-
-  int dx = (x - last_x_pos);
-  int dy = (y - last_y_pos);
-  int x_move = dx * sensitivity;
-  int y_move = dy * sensitivity;
-
-  if(std::abs(x - last_x_pos)<10){
-    Serial.println(static_cursor_frame_count);
-    static_cursor_frame_count++;
-  }
-  else{
-    static_cursor_frame_count = 0;
-  }
-
-  if(static_cursor_frame_count >= 100){
-    Serial.println("hiiiiiiiiiiiiiiiiiiiiiiiiii");
-    static_cursor_frame_count = 0;
-    delay(1000);
+    /* check for clicks*/
+    if ((roll_a > 30) && (roll_a < 45)){ // Left click (50 is good)
+      Serial.println("left clicked");
+      bleMouse.click(MOUSE_LEFT);
+      // drv.setWaveform(0, 17); // Effect 17
+      // drv.setWaveform(1, 0); // End waveform
+      // drv.go();
+      //drv.setWaveform(0,0); //Stops Vibration
+      click_mode = false;
     }
-  
-  last_x_pos = x;
-  last_y_pos = y;
-  
-  if(bleMouse.isConnected()) {
-    // Serial.println(x, DEC);
-    bleMouse.move(x_move,y_move,0,0);
+    if ((roll_a < -30) && (roll_a > -45)){ //Right click (-50 is good)
+      Serial.println("right clicked");
+      bleMouse.click(MOUSE_RIGHT);
+      // drv.setWaveform(0, 17); // Effect 17 Strong Click 1 - 100 Percent
+      // drv.setWaveform(1, 0); // End waveform
+      // drv.go();      
+      //drv.setWaveform(0,0); //Stops Vibration
+      click_mode = false;
+    }
+
+    click_mode_frame_count++;
+    if(click_mode_frame_count >= 2000){
+      Serial.println("No input detected, going back to cursor mode");
+      click_mode = false;
+    }
   }
-  else {
-    char buffer[1024];
-    char *ptr = buffer;
-    ptr += sprintf(ptr, "%d, %d, %d, %d, %d, %d, %d, %d\n", objs[0].cx,objs[0].cy, objs[1].cx,objs[1].cy, objs[2].cx,objs[2].cy, objs[3].cx, objs[3].cy);
-    Serial.print(buffer);
+
+  /* CURSOR MODE*/
+  else{
+    /* PA sensor reading */
+    delayMicroseconds(s_frame_period_micros);
+    digitalWrite(SS, 0); //Assert CSB Low
+    PA_object objs[16]; //initialize objects array
+    PA_read_report(objs, 1); //read object data into objs array
+    digitalWrite(SS, 1);  // deasserting CS seems to be required for next frame readout
+
+    /* screen space conversions */
+    int x, y;
+    y = objs[0].cx /4095.0 * res_x; // convert to screen coordinates
+    x = objs[0].cy /4095.0 * res_y;
+    int dx = (x - last_x_pos); // possibly useful for other things?..
+    int dy = (y - last_y_pos);
+    int x_move = dx * sensitivity; // use these to move mouse
+    int y_move = dy * sensitivity;
+
+    // count frames if cursor still and not in corners
+    if(std::abs(x-last_x_pos) < 10 && objs[0].cx < 4095.0 && objs[0].cy < 4095.0){
+      static_cursor_frame_count++;
+    }
+    else{
+      static_cursor_frame_count = 0;
+    }
+
+    // enter click mode here
+    if(static_cursor_frame_count >= 125){
+      click_mode = true;
+      Serial.println("entering click mode");
+      static_cursor_frame_count = 0; // reset static cursor counter
+      delay(1000);
+    }
+
+    // set last pos as current pos
+    last_x_pos = x;
+    last_y_pos = y;
+
+    // move mouse, print sensor data if not connected to ble
+    if(bleMouse.isConnected()) {
+      // Serial.println(x, DEC);
+      bleMouse.move(x_move,y_move,0,0);
+    }
+    else {
+      char buffer[128];
+      char *ptr = buffer;
+      ptr += sprintf(ptr, "%d, %d\n", objs[0].cx,objs[0].cy);
+      Serial.print(buffer);
+    }
   }
+
 
   delay(8);
   
