@@ -6,8 +6,10 @@
 </p>
 
 ## Project Overview
-
 UFM (Unidentified Flying Mouse) is a wrist-worn computer input device designed for individuals with limited hand dexterity, those who have undergone hand amputation, or those who were born without a hand. The system converts movements from the arm to mouse functions and sends mouse commands to the user's PC over bluetooth. 
+
+## Project Video
+Link to the project video will be posted once uploaded to MacVideo.
 
 ## Team Members
 - Luke West ([@westl5](https://github.com/westl5))
@@ -21,8 +23,8 @@ UFM (Unidentified Flying Mouse) is a wrist-worn computer input device designed f
 - MPU6050 IMU - Used to capture gestures from the user for mouse clicking and scrolling
 - DRV2605L Haptic Motor Driver - Drives a small haptic erm motor to give prompts to the user
 
-## Project Video
-Link to the project video will be posted once uploaded to MacVideo.
+## System Overview
+<img width="1061" alt="image" src="https://github.com/user-attachments/assets/2262bb28-6cde-40ae-a7a3-166833997c74" />
 
 ## Contact
 For more information about the UFM project, please contact any of the team members listed above.
