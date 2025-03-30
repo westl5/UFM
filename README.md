@@ -24,7 +24,7 @@ Link to the project video will be posted once uploaded to MacVideo.
 - DRV2605L Haptic Motor Driver - Drives a small haptic erm motor to give prompts to the user
 
 ## System Overview
-<img width="1061" alt="image" src="https://github.com/user-attachments/assets/2262bb28-6cde-40ae-a7a3-166833997c74" />
+![Copy of Capstone Poster](https://github.com/user-attachments/assets/1832aff0-9d51-4e79-8bee-93cb2021b86a)
 
 ## Contact
 For more information about the UFM project, please contact any of the team members listed above.
