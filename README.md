@@ -1,7 +1,7 @@
 # UFM - Unidentified Flying Mouse
 
 <p align="center">
-  <img src="/docs/ufm_logo/ufm-logo-blk-blu.png" alt="UFM Logo" width="300"/>
+  <img src="/docs/ufm_logo/ufm-logo-wht.png" alt="UFM Logo" width="300"/>
 </p>
 
 ## Project Overview
