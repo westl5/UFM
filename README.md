@@ -23,9 +23,8 @@ UFM (Unidentified Flying Mouse) is a wrist-worn computer input device designed f
 - MPU6050 IMU - Used to capture gestures from the user for mouse clicking and scrolling
 - DRV2605L Haptic Motor Driver - Drives a small haptic erm motor to give prompts to the user
 
-
-## Gallery
-Project photos and demonstrations will be added as development progresses.
+## Project Video
+Link to the project video will be posted once uploaded to MacVideo.
 
 ## Contact
 For more information about the UFM project, please contact any of the team members listed above.
