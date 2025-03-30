@@ -13,9 +13,9 @@ UFM (Unidentified Flying Mouse) is a wrist-worn computer input device designed f
 
 ## Team Members
 - Luke West ([@westl5](https://github.com/westl5))
-- George Gill ([@georgegill] (https://github.com/georgegill))
-- Matthew Yu ([matthyu2002] (https://github.com/matthyu2002))
-- Ryan Xu ([@RyanXu02] (https://github.com/RyanXu02))
+- George Gill ([@georgegill](https://github.com/georgegill))
+- Matthew Yu ([matthyu2002](https://github.com/matthyu2002))
+- Ryan Xu ([@RyanXu02](https://github.com/RyanXu02))
 
 ## Technologies
 - ESP-32 Microncontroller - Allows communication between sensors and sends mouse commands to the user's PC over bluetooth**
