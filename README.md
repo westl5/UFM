@@ -16,15 +16,6 @@ Link to the project video will be posted once uploaded to MacVideo.
 - George Gill ([@georgegill](https://github.com/georgegill))
 - Matthew Yu ([matthyu2002](https://github.com/matthyu2002))
 - Ryan Xu ([@RyanXu02](https://github.com/RyanXu02))
-
-## Technologies
-- ESP-32 Microncontroller - Allows communication between sensors and sends mouse commands to the user's PC over bluetooth**
-- Pixart PAJ7025R3 MOT Sensor - Used to track an 850nm IR LED reference for mouse cursor movement
-- MPU6050 IMU - Used to capture gestures from the user for mouse clicking and scrolling
-- DRV2605L Haptic Motor Driver - Drives a small haptic erm motor to give prompts to the user
-
-## System Overview
-![Copy of Capstone Poster](https://github.com/user-attachments/assets/1832aff0-9d51-4e79-8bee-93cb2021b86a)
-
+  
 ## Contact
 For more information about the UFM project, please contact any of the team members listed above.
