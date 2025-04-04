@@ -507,9 +507,9 @@ int static_cursor_frame_count = 0;
 int click_mode_frame_count = 0;
 bool click_mode = false;
 
-int sensitivity = 1.0;
+int sensitivity = 2.0;
 
-uint8_t frametime = 12;
+uint8_t frametime = 6;
 
 float offset_x, offset_y, offset_z; // for mpu
 void calibrate(){ //Calibrates IMU
@@ -588,35 +588,38 @@ void loop() {
     roll_a = atan2(acc_x,sqrt((acc_y*acc_y)+(acc_z*acc_z))) * 180/PI; //Roll Calc
     pitch_a = atan2(acc_y,sqrt((acc_x*acc_x)+(acc_z*acc_z))) * 180/PI; //Pitch Calc
 
-    Serial.println(pitch_a);
     /* check for clicks*/
-    if ((pitch_a > 30) && (pitch_a < 45)){ // Left click (50 is good)
+    if ((pitch_a > 50) && (pitch_a < 80)){ // Left click
       Serial.println("left clicked");
-      //bleMouse.click(MOUSE_LEFT);
+      bleMouse.click(MOUSE_LEFT);
 
-      drv.setWaveform(1, 4);  // strong click 100%, see datasheet part 11.2
-      drv.setWaveform(2, 0);  // end of waveforms
+      drv.setWaveform(0, 17);  // strong click 100%, see datasheet part 11.2
+      drv.setWaveform(1, 0);  // end of waveforms
       drv.go();
       // drv.setWaveform(0,0); //Stops Vibration
 
       click_mode = false;
       click_mode_frame_count = 0;
+
+      delay(500);
     }
-    if ((pitch_a < -30) && (pitch_a > -45)){ //Right click (-50 is good)
+    if ((pitch_a < -50) && (pitch_a > -80)){ //Right click
       Serial.println("right clicked");
-      //bleMouse.click(MOUSE_RIGHT);
+      bleMouse.click(MOUSE_RIGHT);
 
-      drv.setWaveform(1, 4);  // strong click 100%, see datasheet part 11.2
-      drv.setWaveform(2, 0);  // end of waveforms
+      drv.setWaveform(0, 17);  // strong click 100%, see datasheet part 11.2
+      drv.setWaveform(1, 0);  // end of waveforms
       drv.go();
       // drv.setWaveform(0,0); //Stops Vibration
 
       click_mode = false;
       click_mode_frame_count = 0;
+
+      delay(500);
     }
 
     click_mode_frame_count++;
-    if(click_mode_frame_count >= 250){
+    if(click_mode_frame_count >= 100){
       Serial.println("No input detected, going back to cursor mode");
       click_mode = false;
       click_mode_frame_count = 0;
@@ -641,18 +644,32 @@ void loop() {
       Serial.print(buffer);
       return;
     }
+    // Serial.println(objs[0].cx, DEC);
 
-    /* screen space conversions */
-    int x, y;
-    y = (4095 - objs[0].cx) /4095.0 * res_x; // convert to screen coordinates
-    x = (4095 - objs[0].cy) /4095.0 * res_y;
+    int x,y;
+    // if object out of bounds, use last position
+    if(objs[0].cx > 4094.0 || objs[0].cy > 4094.0){ // check if out of bounds
+      Serial.println("out of bounds, using last position");
+      x = last_x_pos;
+      y = last_y_pos;
+    }
+    else{
+      y = (4095 - objs[0].cx) /4095.0 * res_x; // convert to screen coordinates
+      x = (4095 - objs[0].cy) /4095.0 * res_y;
+    }
+
     int dx = (x - last_x_pos); // possibly useful for other things?..
     int dy = (y - last_y_pos);
+
+    if(dx > 10){
+      Serial.println(dx, DEC);
+      Serial.println("jumped");
+    }
     int x_move = dx * sensitivity; // use these to move mouse
     int y_move = dy * sensitivity;
 
     // count frames if cursor still and not in corners
-    if(std::abs(x-last_x_pos) < 10 && objs[0].cx < 4095.0 && objs[0].cy < 4095.0){
+    if(std::abs(x-last_x_pos) < 5 && objs[0].cx < 4095.0 && objs[0].cy < 4095.0){
       static_cursor_frame_count++;
     }
     else{
@@ -667,13 +684,13 @@ void loop() {
     bleMouse.move(x_move,y_move,0,0);
 
     // enter click mode here
-    if(static_cursor_frame_count >= 125){
+    if(static_cursor_frame_count >= 200){
       click_mode = true;
       Serial.println("entering click mode");
       static_cursor_frame_count = 0; // reset static cursor counter
 
-      drv.setWaveform(1, 34);  // strong click 100%, see datasheet part 11.2
-      drv.setWaveform(2, 0);  // end of waveforms
+      drv.setWaveform(0, 37);  // strong click 100%, see datasheet part 11.2
+      drv.setWaveform(1, 0);  // end of waveforms
       drv.go();
     }
   }
