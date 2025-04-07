@@ -7,3 +7,5 @@ code/HostApp/*.sln
 code/HostApp/*.vcxproj
 code/HostApp/*.filters
 code/HostApp/*.users
+code/UFMGUI/dist/main2/_internal/
+code/UFMGUI/build/
