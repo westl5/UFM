@@ -9,7 +9,7 @@
 UFM (Unidentified Flying Mouse) is a wrist-worn computer input device designed for individuals with limited hand dexterity, those who have undergone hand amputation, or those who were born without a hand. The system converts movements from the arm to mouse functions and sends mouse commands to the user's PC over bluetooth. 
 
 ## Project Video
-([UFM - ECE Video](https://www.macvideo.ca/media/UFM+-+ECE/1_7h2oiy0x/363742172))
+([UFM - ECE Video]https://github.com/westl5/UFM/blob/main/docs/videos/Ad_LQ.mp4)
 
 ## Team Members
 - Luke West ([@westl5](https://github.com/westl5))
