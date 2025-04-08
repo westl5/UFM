@@ -11,7 +11,7 @@ UFM (Unidentified Flying Mouse) is a wrist-worn computer input device designed f
 ## Project Video
 https://github.com/user-attachments/assets/12428ccc-8710-40ed-a4b3-f343b9fc400c
 
-([Full Video:](https://www.macvideo.ca/media/UFM+-+ECE/1_7h))
+([Full Video](https://youtu.be/52ZPP2TyDK4))
 
 ## Team Members
 - Luke West ([@westl5](https://github.com/westl5))
