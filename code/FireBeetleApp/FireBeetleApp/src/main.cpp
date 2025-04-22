@@ -507,33 +507,175 @@ int static_cursor_frame_count = 0;
 int click_mode_frame_count = 0;
 bool click_mode = false;
 
-int sensitivity = 1.0;
+int sensitivity = 2.0;
+
+bool click_enabled = true;
+bool is_right_handed = true;
+int leftClickMinAngle = 50;  // Default left click minimum angle
+int leftClickMaxAngle = 80;  // Default left click maximum angle
+int rightClickMinAngle = -80;  // Default right click minimum angle
+int rightClickMaxAngle = -50;  // Default right click maximum angle
+// Function to process incoming serial commands
+void processSerialCommands() {
+  if (Serial.available() > 0) {
+    String command = Serial.readStringUntil('\n');
+    
+    // Process sensitivity command
+    if (command.startsWith("sensitivity=")) {
+      String valueStr = command.substring(12);
+      float newSensitivity = valueStr.toFloat();
+      
+      // Validate the received sensitivity value
+      if (newSensitivity >= 0.1 && newSensitivity <= 10.0) {
+        sensitivity = newSensitivity;
+        Serial.print("Sensitivity set to: ");
+        Serial.println(sensitivity);
+      } else {
+        Serial.println("Invalid sensitivity value. Must be between 0.1 and 10.0");
+      }
+    }
+    
+    // Process handedness command
+    else if (command.startsWith("handedness=")) {
+      String mode = command.substring(11);
+      
+      if (mode == "right") {
+        is_right_handed = true;
+        Serial.println("Handedness set to: right");
+      } else if (mode == "left") {
+        is_right_handed = false;
+        Serial.println("Handedness set to: left");
+      } else {
+        Serial.println("Invalid handedness value. Use 'right' or 'left'");
+      }
+    }
+    
+    // Process click enable/disable command
+    else if (command.startsWith("click_enabled=")) {
+      String enabled = command.substring(14);
+      
+      if (enabled == "true") {
+        click_enabled = true;
+        Serial.println("Click mode set to: enabled");
+      } else if (enabled == "false") {
+        click_enabled = false;
+        Serial.println("Click mode set to: disabled");
+      } else {
+        Serial.println("Invalid click mode value. Use 'true' or 'false'");
+      }
+    }
+    
+    // Process left click min angle
+    else if (command.startsWith("left_click_min=")) {
+      String valueStr = command.substring(15);
+      int newValue = valueStr.toInt();
+      
+      // Validate the angle range
+      if (newValue >= 10 && newValue <= 120) {
+        leftClickMinAngle = newValue;
+        Serial.print("Left click min angle: ");
+        Serial.println(leftClickMinAngle);
+      } else {
+        Serial.println("Invalid left click min angle. Must be between 10 and 120");
+      }
+    }
+    
+    // Process left click max angle
+    else if (command.startsWith("left_click_max=")) {
+      String valueStr = command.substring(15);
+      int newValue = valueStr.toInt();
+      
+      // Validate the angle range
+      if (newValue >= 10 && newValue <= 120) {
+        leftClickMaxAngle = newValue;
+        Serial.print("Left click max angle: ");
+        Serial.println(leftClickMaxAngle);
+      } else {
+        Serial.println("Invalid left click max angle. Must be between 10 and 120");
+      }
+    }
+    
+    // Process right click min angle
+    else if (command.startsWith("right_click_min=")) {
+      String valueStr = command.substring(16);
+      int newValue = valueStr.toInt();
+      
+      // Validate the angle range
+      if (newValue >= -120 && newValue <= -10) {
+        rightClickMinAngle = newValue;
+        Serial.print("Right click min angle: ");
+        Serial.println(rightClickMinAngle);
+      } else {
+        Serial.println("Invalid right click min angle. Must be between -120 and -10");
+      }
+    }
+    
+    // Process right click max angle
+    else if (command.startsWith("right_click_max=")) {
+      String valueStr = command.substring(16);
+      int newValue = valueStr.toInt();
+      
+      // Validate the angle range
+      if (newValue >= -120 && newValue <= -10) {
+        rightClickMaxAngle = newValue;
+        Serial.print("Right click max angle: ");
+        Serial.println(rightClickMaxAngle);
+      } else {
+        Serial.println("Invalid right click max angle. Must be between -120 and -10");
+      }
+    }
+    
+    // Process get sensitivity request
+    else if (command == "get_sensitivity") {
+      Serial.print("Sensitivity set to: ");
+      Serial.println(sensitivity);
+    }
+    
+    // Process get handedness request
+    else if (command == "get_handedness") {
+      if (is_right_handed) {
+        Serial.println("Handedness set to: right");
+      } else {
+        Serial.println("Handedness set to: left");
+      }
+    }
+    
+    // Process get click enabled request
+    else if (command == "get_click_enabled") {
+      if (click_enabled) {
+        Serial.println("Click mode set to: enabled");
+      } else {
+        Serial.println("Click mode set to: disabled");
+      }
+    }
+    
+    // Process get left click angle request
+    else if (command == "get_left_click_angle") {
+      Serial.print("Left click min angle: ");
+      Serial.println(leftClickMinAngle);
+      Serial.print("Left click max angle: ");
+      Serial.println(leftClickMaxAngle);
+    }
+    
+    // Process get right click angle request
+    else if (command == "get_right_click_angle") {
+      Serial.print("Right click min angle: ");
+      Serial.println(rightClickMinAngle);
+      Serial.print("Right click max angle: ");
+      Serial.println(rightClickMaxAngle);
+    }
+    
+    // Unknown command
+    else {
+      Serial.print("Unknown command: ");
+      Serial.println(command);
+    }
+  }
+}
+
 
 uint8_t frametime = 12;
 
-float offset_x, offset_y, offset_z; // for mpu
-void calibrate(){ //Calibrates IMU
-  // Variables to accumulate sensor readings during calibration
-  float calx, caly, calz;
-  calx = 0.00;
-  caly = 0.00;
-  calz = 0.00;
-  int samples = 500;
-  // Collect 'samples' number of readings from the sensor
-  for(int i = 0; i < samples; i++){
-    sensors_event_t a, g, temp;
-    mpu.getEvent(&a, &g, &temp); //read vals
-    // Sum up the acceleration values for averaging
-    calx += a.acceleration.x;
-    caly += a.acceleration.y;
-    calz += a.acceleration.z;
-    }
-  // Compute the average acceleration values
-  offset_x = calx/samples;
-  offset_y = caly/samples;
-  offset_z = calz/samples;
-  Serial.println("Done Calibrating");
-}
 
 void setup() {
   Serial.begin(9600); //serial communication using UART through USB-C to get data from sensor (will be chanaged to bluetooth later)
@@ -551,15 +693,14 @@ void setup() {
     Serial.println("Failed to find MPU-6050 chip!");
     while (1); // Halt if initialization fails
   }
-  Serial.println("MPU-6050 Initialized!");
-  calibrate();
+  // Serial.println("MPU-6050 Initialized!");
 
   // Initialize DRV2605L (Vibration Motor)
   if (!drv.begin()) {  // Default address for DRV2605L is 0x5A
     Serial.println("Failed to find DRV2605L chip!");
     while (1); // Halt if initialization fails
   }
-  Serial.println("DRV2605L Initialized!");
+  // Serial.println("DRV2605L Initialized!");
   // Configure DRV2605L
   drv.selectLibrary(1); // Select library 1 (basic vibration effects)
   drv.setMode(DRV2605_MODE_INTTRIG); // Internal trigger mode for vibration motor
@@ -567,6 +708,7 @@ void setup() {
  
 void loop() {
 
+  processSerialCommands(); // Process incoming serial commands
   /* CLICK MODE*/
   if(click_mode == true){
     /* Get new IMU events with the readings */
@@ -588,36 +730,39 @@ void loop() {
     roll_a = atan2(acc_x,sqrt((acc_y*acc_y)+(acc_z*acc_z))) * 180/PI; //Roll Calc
     pitch_a = atan2(acc_y,sqrt((acc_x*acc_x)+(acc_z*acc_z))) * 180/PI; //Pitch Calc
 
-    Serial.println(pitch_a);
     /* check for clicks*/
-    if ((pitch_a > 30) && (pitch_a < 45)){ // Left click (50 is good)
-      Serial.println("left clicked");
-      //bleMouse.click(MOUSE_LEFT);
+    if ((pitch_a > 50) && (pitch_a < 80)){ // Left click
+      // Serial.println("left clicked");
+      bleMouse.click(MOUSE_LEFT);
 
-      drv.setWaveform(1, 4);  // strong click 100%, see datasheet part 11.2
-      drv.setWaveform(2, 0);  // end of waveforms
+      drv.setWaveform(0, 17);  // strong click 100%, see datasheet part 11.2
+      drv.setWaveform(1, 0);  // end of waveforms
       drv.go();
       // drv.setWaveform(0,0); //Stops Vibration
 
       click_mode = false;
       click_mode_frame_count = 0;
+
+      delay(500);
     }
-    if ((pitch_a < -30) && (pitch_a > -45)){ //Right click (-50 is good)
-      Serial.println("right clicked");
-      //bleMouse.click(MOUSE_RIGHT);
+    if ((pitch_a < -50) && (pitch_a > -80)){ //Right click
+      // Serial.println("right clicked");
+      bleMouse.click(MOUSE_RIGHT);
 
-      drv.setWaveform(1, 4);  // strong click 100%, see datasheet part 11.2
-      drv.setWaveform(2, 0);  // end of waveforms
+      drv.setWaveform(0, 17);  // strong click 100%, see datasheet part 11.2
+      drv.setWaveform(1, 0);  // end of waveforms
       drv.go();
       // drv.setWaveform(0,0); //Stops Vibration
 
       click_mode = false;
       click_mode_frame_count = 0;
+
+      delay(500);
     }
 
     click_mode_frame_count++;
-    if(click_mode_frame_count >= 250){
-      Serial.println("No input detected, going back to cursor mode");
+    if(click_mode_frame_count >= 100){
+      // Serial.println("No input detected, going back to cursor mode");
       click_mode = false;
       click_mode_frame_count = 0;
     }
@@ -638,21 +783,36 @@ void loop() {
       char buffer[128];
       char *ptr = buffer;
       ptr += sprintf(ptr, "%d, %d\n", objs[0].cx,objs[0].cy);
-      Serial.print(buffer);
+      // Serial.print(buffer);
       return;
     }
 
-    /* screen space conversions */
-    int x, y;
-    y = (4095 - objs[0].cx) /4095.0 * res_x; // convert to screen coordinates
-    x = (4095 - objs[0].cy) /4095.0 * res_y;
+    int x,y;
+    // if object out of bounds, use last position
+    if(objs[0].cx > 4094.0 || objs[0].cy > 4094.0){ // check if out of bounds
+      x = last_x_pos;
+      y = last_y_pos;
+    }
+    else{
+      // left hand mode just wear the thing backwards, dont need to change rolling direction this way
+      if (is_right_handed == true){
+        y = (4095 - objs[0].cx) /4095.0 * res_x; // convert to screen coordinates
+        x = (4095 - objs[0].cy) /4095.0 * res_y;
+      }
+      else{
+        y = (objs[0].cx) /4095.0 * res_x; // convert to screen coordinates
+        x = (objs[0].cy) /4095.0 * res_y;
+      }
+    }
+
     int dx = (x - last_x_pos); // possibly useful for other things?..
     int dy = (y - last_y_pos);
+
     int x_move = dx * sensitivity; // use these to move mouse
     int y_move = dy * sensitivity;
 
     // count frames if cursor still and not in corners
-    if(std::abs(x-last_x_pos) < 10 && objs[0].cx < 4095.0 && objs[0].cy < 4095.0){
+    if(std::abs(x-last_x_pos) < 5 && objs[0].cx < 4095.0 && objs[0].cy < 4095.0){
       static_cursor_frame_count++;
     }
     else{
@@ -663,18 +823,23 @@ void loop() {
     last_y_pos = y;
 
     // move mouse, print sensor data if not connected to ble
-    // Serial.println(x, DEC);
     bleMouse.move(x_move,y_move,0,0);
 
     // enter click mode here
-    if(static_cursor_frame_count >= 125){
+    if(static_cursor_frame_count >= 200){
       click_mode = true;
-      Serial.println("entering click mode");
+      //Serial.println("entering click mode");
       static_cursor_frame_count = 0; // reset static cursor counter
 
-      drv.setWaveform(1, 34);  // strong click 100%, see datasheet part 11.2
-      drv.setWaveform(2, 0);  // end of waveforms
+      drv.setWaveform(0, 37);  // strong click 100%, see datasheet part 11.2
+      drv.setWaveform(1, 0);  // end of waveforms
       drv.go();
+
+      // if click mode enable is not set, just dont go to click mode
+      if (click_enabled == false){
+        click_mode = false;
+      }
+
     }
   }
 
